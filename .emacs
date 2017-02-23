@@ -2,25 +2,25 @@
 ;;; Commentary:
 ;;; Code:
 
-; load any non-standard packages from here
+;; load any non-standard packages from here
 (add-to-list 'load-path "~/.emacs.d/lisp")
 
-; enable package-loading from MELPA
+;; enable package-loading from MELPA
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/"))
 (package-initialize)
 
-; code completion
+;; code completion
 (require 'company)
 (require 'company-quickhelp) ; tooltip for code-completion popup
 (require 'company-tern) ; Javascript code analysis
 (require 'company-web) ; HTML completion
-; automatic syntax checking
+;; automatic syntax checking
 (require 'flycheck)
-; web-development major mode
+;; web-development major mode
 (require 'web-mode)
 
-; do some things after initializing the Emacs session:
+;; do some things after initializing the Emacs session:
 (add-hook 'after-init-hook (lambda()
                              ; auto-complete everything everywhere
 			     (global-company-mode t)
@@ -28,7 +28,7 @@
 			     (global-flycheck-mode t)
                              ; enable help tooltips for code-completion popup
 			     (company-quickhelp-mode 1)))
-; do some things after turning on web-mode for a given buffer:
+;; do some things after turning on web-mode for a given buffer:
 (add-hook 'web-mode-hook (lambda()
                            ; turn on camelCase-aware code navigation
 			   (subword-mode t)
@@ -37,10 +37,13 @@
                            ; assume JSX
 			   (web-mode-set-content-type "jsx")))
 
-; turn on web-mode for every file ending in '.js':
+;; turn on web-mode for every file ending in '.js':
 (add-to-list 'auto-mode-alist '("\\.js$" . web-mode))
 
+(add-to-list 'web-mode-indentation-params '("lineup-args" . nil))
 (add-to-list 'web-mode-indentation-params '("lineup-calls" . nil))
+(add-to-list 'web-mode-indentation-params '("lineup-concats" . nil))
+(add-to-list 'web-mode-indentation-params '("lineup-ternary" . nil))
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
@@ -82,7 +85,7 @@
  '(company-tooltip-selection ((t (:background "steel blue" :foreground "white"))))
  '(web-mode-current-column-highlight-face ((t (:background "#f0f0f0")))))
 
-; give advice to web-mode-highlight-part on how to do its job
+;; give advice to web-mode-highlight-part on how to do its job
 (defadvice web-mode-highlight-part (around tweak-jsx activate)
   "Make JSX highlighting great again."
 
@@ -90,25 +93,27 @@
       (let ((web-mode-enable-part-face nil)) ad-do-it)
     ad-do-it))
 
-; turn on ESLint for each file opened in web-mode
+;; turn on ESLint for each file opened in web-mode
 (flycheck-add-mode 'javascript-eslint 'web-mode)
 
-; Ctrl-Tab -> next window
+;; Ctrl-Tab -> next window
 (global-set-key [C-tab] 'other-window)
-; Ctrl-Shift-Tab -> previous window
+;; Ctrl-Shift-Tab -> previous window
 (global-set-key [C-S-iso-lefttab] (lambda ()
 				    (interactive)
 				    (other-window -1)))
-; Ctrl-PgDn -> next window
+;; Ctrl-PgDn -> next window
 (global-set-key [C-next] 'other-window)
-; Ctrl-PgUp -> previous window
+;; Ctrl-PgUp -> previous window
 (global-set-key [C-prior] (lambda ()
                             (interactive)
                             (other-window -1)))
 
-; set a bunch of preferred values
+;; set a bunch of preferred values
+(setq-default column-number-mode t)
 (setq-default company-quickhelp-delay 0.4)
 (setq-default css-indent-offset 2)
+(setq-default visual-bell t)
 (setq-default web-mode-attr-indent-offset 2)
 (setq-default web-mode-code-indent-offset 2)
 (setq-default web-mode-css-indent-offset 2)
