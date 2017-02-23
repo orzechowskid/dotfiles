@@ -40,6 +40,8 @@
 ; turn on web-mode for every file ending in '.js':
 (add-to-list 'auto-mode-alist '("\\.js$" . web-mode))
 
+(add-to-list 'web-mode-indentation-params '("lineup-calls" . nil))
+
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -51,7 +53,7 @@
  '(company-files-exclusions
    (quote
     (".o" "~" "#" ".bin" ".lbin" ".so" ".a" ".ln" ".blg" ".bbl" ".elc" ".lof" ".glo" ".idx" ".lot" ".svn/" ".hg/" ".git/" ".bzr/" "CVS/" "_darcs/" "_MTN/")))
- '(company-minimum-prefix-length 0)
+ '(company-minimum-prefix-length 1)
  '(company-tooltip-align-annotations t)
  '(font-use-system-font t)
  '(indent-tabs-mode nil)
@@ -59,12 +61,14 @@
  '(menu-bar-mode nil)
  '(package-selected-packages
    (quote
-    (js2-mode web-mode company-web flycheck company-quickhelp company-tern)))
+    (markdown-mode js2-mode web-mode company-web flycheck company-quickhelp company-tern)))
  '(tool-bar-mode nil)
+ '(web-mode-enable-auto-indentation t)
  '(web-mode-enable-current-column-highlight t)
  '(web-mode-enable-current-element-highlight nil)
  '(web-mode-enable-heredoc-fontification nil)
- '(web-mode-enable-html-entities-fontification nil))
+ '(web-mode-enable-html-entities-fontification nil)
+ '(web-mode-indent-style 2))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

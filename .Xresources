@@ -1,0 +1,31 @@
+Xft.dpi: 96
+
+! URxvt
+! normal colors
+! color0 black
+! color1 red
+! color2 green
+! color3 yellow
+! color4 blue
+! color5 purple
+! color6 cyan
+! color7 white
+! light colors
+! color8 black
+! color9 red
+! color10 green
+! color11 yellow
+! color12 blue
+! color13 purple
+! color14 cyan
+! color15 white
+
+URxvt*background: rgba:0000/0000/0000/d800
+URxvt*color4: #6495ed
+URxvt:color10: #32a032
+URxvt*color12: #6495ed
+URxvt*depth: 32
+URxvt*font: xft:Source Code Pro:size=14
+URxvt*foreground: rgb:ffff/ffff/ffff
+URxvt*scrollBar: false
+URxvt*scrollWithTtyOutput: false
