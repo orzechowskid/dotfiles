@@ -1,0 +1,3 @@
+$include /etc/inputrc
+
+"\C-k": "x\C-u tput reset\n\C-y\C-h"
