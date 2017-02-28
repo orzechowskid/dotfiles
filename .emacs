@@ -22,19 +22,23 @@
 
 ;; do some things after initializing the Emacs session:
 (add-hook 'after-init-hook (lambda()
-                             ; auto-complete everything everywhere
+                             ;; auto-complete everything everywhere
 			     (global-company-mode t)
-                             ; auto-check everything
-			     (global-flycheck-mode t)
-                             ; enable help tooltips for code-completion popup
+                             ;; enable help tooltips for code-completion popup
 			     (company-quickhelp-mode 1)))
+;; do some things after turning on scss-mode for a given buffer:
+(add-hook 'scss-mode-hook (lambda()
+                            ;; turn on camelCase-aware code navigation
+                            (subword-mode t)))
 ;; do some things after turning on web-mode for a given buffer:
 (add-hook 'web-mode-hook (lambda()
-                           ; turn on camelCase-aware code navigation
+                           ;; auto-check everything
+                           (global-flycheck-mode t)
+                           ;; turn on camelCase-aware code navigation
 			   (subword-mode t)
-                           ; assume JS, and enable the JS code analysis engine
+                           ;; assume JS, and enable the JS code analysis engine
 			   (tern-mode t)
-                           ; assume JSX
+                           ;; assume JSX
 			   (web-mode-set-content-type "jsx")))
 
 ;; turn on web-mode for every file ending in '.js':
@@ -94,6 +98,7 @@
 
 ;; turn on ESLint for each file opened in web-mode
 (flycheck-add-mode 'javascript-eslint 'web-mode)
+(flycheck-add-mode 'scss-lint 'scss-mode)
 
 ;; Ctrl-Tab -> next window
 (global-set-key [C-tab] 'other-window)
