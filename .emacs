@@ -54,6 +54,7 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(column-number-mode t)
  '(company-backends
    (quote
     (company-capf company-css company-files company-tern company-web)))
@@ -61,8 +62,9 @@
    (quote
     (".o" "~" "#" ".bin" ".lbin" ".so" ".a" ".ln" ".blg" ".bbl" ".elc" ".lof" ".glo" ".idx" ".lot" ".svn/" ".hg/" ".git/" ".bzr/" "CVS/" "_darcs/" "_MTN/")))
  '(company-minimum-prefix-length 1)
+ '(company-quickhelp-delay 0.4)
  '(company-tooltip-align-annotations t)
- '(font-use-system-font t)
+ '(css-indent-offset 2)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
  '(menu-bar-mode nil)
@@ -70,17 +72,24 @@
    (quote
     (markdown-mode js2-mode web-mode company-web flycheck company-quickhelp company-tern)))
  '(tool-bar-mode nil)
+ '(visual-bell t)
+ '(web-mode-attr-indent-offset 2)
+ '(web-mode-code-indent-offset 2)
+ '(web-mode-css-indent-offset 2)
  '(web-mode-enable-auto-indentation t)
+ '(web-mode-enable-auto-quoting nil)
  '(web-mode-enable-current-column-highlight t)
  '(web-mode-enable-current-element-highlight nil)
  '(web-mode-enable-heredoc-fontification nil)
  '(web-mode-enable-html-entities-fontification nil)
- '(web-mode-indent-style 2))
+ '(web-mode-indent-style 2)
+ '(web-mode-markup-indent-offset 2))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(default ((t (:family "Source Code Pro" :foundry "ADBO" :slant normal :weight light :height 143 :width normal))))
  '(company-scrollbar-bg ((t (:background "white"))))
  '(company-scrollbar-fg ((t (:background "darkgray"))))
  '(company-tooltip-annotation ((t (:inherit company-tooltip))))
@@ -113,17 +122,6 @@
 (global-set-key [C-prior] (lambda ()
                             (interactive)
                             (other-window -1)))
-
-;; set a bunch of preferred values
-(setq-default column-number-mode t)
-(setq-default company-quickhelp-delay 0.4)
-(setq-default css-indent-offset 2)
-(setq-default visual-bell t)
-(setq-default web-mode-attr-indent-offset 2)
-(setq-default web-mode-code-indent-offset 2)
-(setq-default web-mode-css-indent-offset 2)
-(setq-default web-mode-enable-auto-quoting nil)
-(setq-default web-mode-markup-indent-offset 2)
 
 (provide '.emacs)
 ;;; .emacs ends here
