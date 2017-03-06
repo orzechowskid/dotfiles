@@ -65,6 +65,7 @@
  '(company-quickhelp-delay 0.4)
  '(company-tooltip-align-annotations t)
  '(css-indent-offset 2)
+ '(electric-indent-mode nil)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
  '(menu-bar-mode nil)
@@ -106,9 +107,24 @@
       (let ((web-mode-enable-part-face nil)) ad-do-it)
     ad-do-it))
 
+(defun delete-word (arg)
+  "Delete characters forward until encountering the end of a word.
+With argument ARG, do this that many times."
+  (interactive "p")
+  (delete-region (point) (progn (forward-word arg) (point))))
+
+(defun backward-delete-word (arg)
+  "Delete characters backward until encountering the beginning of a word.
+With argument ARG, do this that many times."
+  (interactive "p")
+  (delete-word (- arg)))
+
 ;; turn on ESLint for each file opened in web-mode
 (flycheck-add-mode 'javascript-eslint 'web-mode)
 (flycheck-add-mode 'scss-lint 'scss-mode)
+
+;; Ctrl-Backspace -> delete a word instead of killing it
+(global-set-key [C-backspace] 'backward-delete-word)
 
 ;; Ctrl-Tab -> next window
 (global-set-key [C-tab] 'other-window)
