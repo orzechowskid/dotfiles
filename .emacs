@@ -125,7 +125,8 @@ With argument ARG, do this that many times."
 
 ;; Ctrl-Backspace -> delete a word instead of killing it
 (global-set-key [C-backspace] 'backward-delete-word)
-
+;; Ctrl-Delete -> forward-delete a word instead of killing it
+(global-set-key [C-delete] 'delete-word)
 ;; Ctrl-Tab -> next window
 (global-set-key [C-tab] 'other-window)
 ;; Ctrl-Shift-Tab -> previous window
