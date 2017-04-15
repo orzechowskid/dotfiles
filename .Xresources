@@ -29,3 +29,4 @@ URxvt*font: xft:Source Code Pro:size=14
 URxvt*foreground: rgb:ffff/ffff/ffff
 URxvt*scrollBar: false
 URxvt*scrollWithTtyOutput: false
+
