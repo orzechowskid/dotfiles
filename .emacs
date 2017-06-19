@@ -17,6 +17,8 @@
 (require 'company-web) ; HTML completion
 ;; automatic syntax checking
 (require 'flycheck)
+;; JSON major mode
+(require 'json-mode)
 ;; web-development major mode
 (require 'web-mode)
 
@@ -30,6 +32,10 @@
 (add-hook 'scss-mode-hook (lambda()
                             ;; turn on camelCase-aware code navigation
                             (subword-mode t)))
+;; do some things after turning on json-mode for a given buffer:
+(add-hook 'json-mode-hook (lambda()
+                            (make-local-variable 'js-indent-level)
+                            (setq js-indent-level 2)))
 ;; do some things after turning on web-mode for a given buffer:
 (add-hook 'web-mode-hook (lambda()
                            ;; auto-check everything
@@ -39,10 +45,15 @@
                            ;; assume JS, and enable the JS code analysis engine
 			   (tern-mode t)
                            ;; assume JSX
-			   (web-mode-set-content-type "jsx")))
+			   (web-mode-set-content-type "jsx")
+                           ;; auto-indent upon Enter keypress
+                           (electric-indent-mode t)
+                           ))
 
+;; turn on json-mode for every file ending in '.json':
+(add-to-list 'json-mode-auto-mode-list '("\\.json\\'" . json-mode))
 ;; turn on web-mode for every file ending in '.js':
-(add-to-list 'auto-mode-alist '("\\.js$" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.js[x]?\\'" . web-mode))
 
 (add-to-list 'web-mode-indentation-params '("lineup-args" . nil))
 (add-to-list 'web-mode-indentation-params '("lineup-calls" . nil))
@@ -62,21 +73,21 @@
    (quote
     (".o" "~" "#" ".bin" ".lbin" ".so" ".a" ".ln" ".blg" ".bbl" ".elc" ".lof" ".glo" ".idx" ".lot" ".svn/" ".hg/" ".git/" ".bzr/" "CVS/" "_darcs/" "_MTN/")))
  '(company-minimum-prefix-length 1)
- '(company-quickhelp-delay 0.4)
+ '(company-quickhelp-delay 0.25)
  '(company-tooltip-align-annotations t)
- '(css-indent-offset 2)
+ '(css-indent-offset 4)
  '(electric-indent-mode nil)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
  '(menu-bar-mode nil)
  '(package-selected-packages
    (quote
-    (markdown-mode js2-mode web-mode company-web flycheck company-quickhelp company-tern)))
+    (json-mode markdown-mode js2-mode web-mode company-web flycheck company-quickhelp company-tern)))
  '(tool-bar-mode nil)
  '(visual-bell t)
- '(web-mode-attr-indent-offset 2)
- '(web-mode-code-indent-offset 2)
- '(web-mode-css-indent-offset 2)
+ '(web-mode-attr-indent-offset 4)
+ '(web-mode-code-indent-offset 4)
+ '(web-mode-css-indent-offset 4)
  '(web-mode-enable-auto-indentation t)
  '(web-mode-enable-auto-quoting nil)
  '(web-mode-enable-current-column-highlight t)
@@ -84,13 +95,13 @@
  '(web-mode-enable-heredoc-fontification nil)
  '(web-mode-enable-html-entities-fontification nil)
  '(web-mode-indent-style 2)
- '(web-mode-markup-indent-offset 2))
+ '(web-mode-markup-indent-offset 4))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(default ((t (:family "Source Code Pro" :foundry "ADBO" :slant normal :weight light :height 140 :width normal))))
+ '(default ((t (:family "Source Code Pro" :foundry "ADBO" :slant normal :weight light :width normal))))
  '(company-scrollbar-bg ((t (:background "white"))))
  '(company-scrollbar-fg ((t (:background "darkgray"))))
  '(company-tooltip-annotation ((t (:inherit company-tooltip))))
