@@ -76,7 +76,9 @@
  '(company-quickhelp-delay 0.25)
  '(company-tooltip-align-annotations t)
  '(css-indent-offset 4)
+ '(cursor-type 'bar)
  '(electric-indent-mode nil)
+ '(hl-line-mode t)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
  '(menu-bar-mode nil)
@@ -134,6 +136,8 @@ With argument ARG, do this that many times."
 (flycheck-add-mode 'javascript-eslint 'web-mode)
 (flycheck-add-mode 'scss-lint 'scss-mode)
 
+(global-hl-line-mode t)
+
 ;; Ctrl-Backspace -> delete a word instead of killing it
 (global-set-key [C-backspace] 'backward-delete-word)
 ;; Ctrl-Delete -> forward-delete a word instead of killing it
@@ -150,6 +154,8 @@ With argument ARG, do this that many times."
 (global-set-key [C-prior] (lambda ()
                             (interactive)
                             (other-window -1)))
+
+(set-face-background 'hl-line "#f8f8f8")
 
 (provide '.emacs)
 ;;; .emacs ends here
