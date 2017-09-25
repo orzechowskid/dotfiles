@@ -56,6 +56,8 @@
 (add-to-list 'auto-mode-alist '("\\.js[x]?\\'" . web-mode))
 ;; turn on scss-mode for every file ending in '.css' or '.scss':
 (add-to-list 'auto-mode-alist '("\\.[s]?css\\'" . scss-mode))
+;; turn on scss-mode for every file ending in '.less':
+(add-to-list 'auto-mode-alist '("\\.less\\'" . scss-mode))
 
 (add-to-list 'web-mode-indentation-params '("lineup-args" . nil))
 (add-to-list 'web-mode-indentation-params '("lineup-calls" . nil))
