@@ -15,6 +15,8 @@
 (require 'company-quickhelp) ; tooltip for code-completion popup
 (require 'company-tern) ; Javascript code analysis
 (require 'company-web) ; HTML completion
+;; inline code coverage indicators
+(require 'coverlay)
 ;; automatic syntax checking
 (require 'flycheck)
 ;; JSON major mode
@@ -48,7 +50,11 @@
 			   (web-mode-set-content-type "jsx")
                            ;; auto-indent upon Enter keypress
                            (electric-indent-mode t)
-                           ))
+                           ;; enable test coverage
+                           (coverlay-mode t)
+                           ;; load the closest coverage file (if none yet)
+                           (unless (bound-and-true-p coverlay--loaded-filepath)
+                               (coverlay-watch-file (concat (locate-dominating-file (file-name-directory buffer-file-name) "coverage") "coverage" "/lcov.info")))))
 
 ;; turn on json-mode for every file ending in '.json':
 (add-to-list 'json-mode-auto-mode-list '("\\.json\\'" . json-mode))
@@ -79,16 +85,20 @@
  '(company-minimum-prefix-length 1)
  '(company-quickhelp-delay 0.25)
  '(company-tooltip-align-annotations t)
+ ;; FIXME: this kinda sucks if the non-default face is used
+ '(coverlay:tested-line-background-color (face-attribute 'default :background))
+ '(coverlay:untested-line-background-color "#ffe8e8")
  '(css-indent-offset 4)
- '(cursor-type 'bar)
+ '(cursor-type (quote bar))
  '(electric-indent-mode nil)
- '(hl-line-mode t)
+ '(hl-line-mode t t)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
  '(menu-bar-mode nil)
  '(package-selected-packages
    (quote
-    (json-mode markdown-mode js2-mode web-mode company-web flycheck company-quickhelp company-tern)))
+    (coverlay json-mode markdown-mode js2-mode web-mode company-web flycheck company-quickhelp company-tern)))
+ '(scroll-bar-mode nil)
  '(tool-bar-mode nil)
  '(visual-bell t)
  '(web-mode-attr-indent-offset 4)
