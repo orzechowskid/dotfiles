@@ -21,6 +21,8 @@
 (require 'flycheck)
 ;; JSON major mode
 (require 'json-mode)
+;; CSS (and friends) major mode
+(require 'scss-mode)
 ;; web-development major mode
 (require 'web-mode)
 
@@ -28,6 +30,8 @@
 (add-hook 'after-init-hook (lambda()
                              ;; auto-complete everything everywhere
 			     (global-company-mode t)
+                             ;; auto-check everything
+                             (global-flycheck-mode t)
                              ;; enable help tooltips for code-completion popup
 			     (company-quickhelp-mode 1)))
 ;; do some things after turning on scss-mode for a given buffer:
@@ -40,8 +44,6 @@
                             (setq js-indent-level 2)))
 ;; do some things after turning on web-mode for a given buffer:
 (add-hook 'web-mode-hook (lambda()
-                           ;; auto-check everything
-                           (global-flycheck-mode t)
                            ;; turn on camelCase-aware code navigation
 			   (subword-mode t)
                            ;; assume JS, and enable the JS code analysis engine
@@ -54,11 +56,16 @@
                            (coverlay-mode t)
                            ;; load the closest coverage file (if none yet)
                            (unless (bound-and-true-p coverlay--loaded-filepath)
-                               (coverlay-watch-file (concat (locate-dominating-file (file-name-directory buffer-file-name) "coverage") "coverage" "/lcov.info")))))
+			     (coverlay-watch-file (concat
+						   (locate-dominating-file
+						    (file-name-directory buffer-file-name)
+						    "coverage")
+						   "coverage"
+						   "/lcov.info")))))
 
 ;; turn on json-mode for every file ending in '.json':
 (add-to-list 'json-mode-auto-mode-list '("\\.json\\'" . json-mode))
-;; turn on web-mode for every file ending in '.js':
+;; turn on web-mode for every file ending in '.js' or '.jsx':
 (add-to-list 'auto-mode-alist '("\\.js[x]?\\'" . web-mode))
 ;; turn on scss-mode for every file ending in '.css' or '.scss':
 (add-to-list 'auto-mode-alist '("\\.[s]?css\\'" . scss-mode))
@@ -85,19 +92,19 @@
  '(company-minimum-prefix-length 1)
  '(company-quickhelp-delay 0.25)
  '(company-tooltip-align-annotations t)
- ;; FIXME: this kinda sucks if the non-default face is used
- '(coverlay:tested-line-background-color (face-attribute 'default :background))
+ '(coverlay:tested-line-background-color "")
  '(coverlay:untested-line-background-color "#ffe8e8")
  '(css-indent-offset 4)
  '(cursor-type (quote bar))
  '(electric-indent-mode nil)
+ '(fringe-mode 20)
  '(hl-line-mode t t)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
  '(menu-bar-mode nil)
  '(package-selected-packages
    (quote
-    (coverlay json-mode markdown-mode js2-mode web-mode company-web flycheck company-quickhelp company-tern)))
+    (fringe-helper coverlay json-mode markdown-mode js2-mode web-mode company-web flycheck company-quickhelp company-tern)))
  '(scroll-bar-mode nil)
  '(tool-bar-mode nil)
  '(visual-bell t)
@@ -117,7 +124,6 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(default ((t (:family "Source Code Pro" :foundry "ADBO" :slant normal :weight light :width normal))))
  '(company-scrollbar-bg ((t (:background "white"))))
  '(company-scrollbar-fg ((t (:background "darkgray"))))
  '(company-tooltip-annotation ((t (:inherit company-tooltip))))
@@ -134,6 +140,38 @@
       (let ((web-mode-enable-part-face nil)) ad-do-it)
     ad-do-it))
 
+;; replace the stock Flycheck double-arrow indicator with a bigger one
+;; maxmum width is 16px according to emacs docs
+(define-fringe-bitmap 'flycheck-big-indicator
+  (vector #b1110001110000000
+          #b0111000111000000
+          #b0011100011100000
+          #b0001110001110000
+          #b0000111000111000
+          #b0000011100011100
+          #b0000001110001110
+          #b0000000111000111
+          #b0000001110001110
+          #b0000011100011100
+          #b0000111000111000
+          #b0001110001110000
+          #b0011100011100000
+          #b0111000111000000
+          #b1110001110000000
+          #b0000000000000000)
+  16 16 'center)
+
+(flycheck-define-error-level 'warning
+  :severity 1
+  :overlay-category 'flycheck-warning-overlay
+  :fringe-bitmap 'flycheck-big-indicator
+  :fringe-face 'flycheck-fringe-warning)
+(flycheck-define-error-level 'error
+  :severity 2
+  :overlay-category 'flycheck-error-overlay
+  :fringe-bitmap 'flycheck-big-indicator
+  :fringe-face 'flycheck-fringe-error)
+
 (defun delete-word (arg)
   "Delete characters forward until encountering the end of a word.
 With argument ARG, do this that many times."
@@ -148,7 +186,7 @@ With argument ARG, do this that many times."
 
 ;; turn on ESLint for each file opened in web-mode
 (flycheck-add-mode 'javascript-eslint 'web-mode)
-(flycheck-add-mode 'scss-lint 'scss-mode)
+(flycheck-add-mode 'scss-stylelint 'scss-mode)
 
 (global-hl-line-mode t)
 
