@@ -20,7 +20,13 @@ module.exports = {
             "allow": [ "warn", "error" ]
         } ],
         "no-extra-semi": "warn",
+        "no-plusplus": [ "warn", {
+            "allowForLoopAfterthoughts": true
+        } ],
         "no-trailing-spaces": "warn",
+        "no-underscore-dangle": [ "warn", {
+            "allow": [ "_id" ] // mongoDB :|
+        } ],
         "no-unused-vars": [ "warn", {
             "ignoreRestSiblings": true
         } ],
@@ -31,6 +37,10 @@ module.exports = {
         "react/jsx-filename-extension": "off",
         "react/jsx-indent": [ "warn", 4 ],
         "react/jsx-indent-props": [ "warn", 4 ],
-        "space-before-function-paren": [ "warn", "never" ]
+        "space-before-function-paren": [ "warn", {
+            "anonymous": "never",
+            "asyncArrow": "always",
+            "named": "never"
+        } ]
     }
 };

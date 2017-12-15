@@ -1,4 +1,6 @@
-Xft.dpi: 276
+! 1920x1080x13.3in : 166dpi
+! 3200x1800x13.3in : 276dpi
+Xft.dpi: 166
 
 ! URxvt
 ! normal colors
@@ -31,4 +33,4 @@ URxvt*saveLines:655350
 URxvt*scrollBar: false
 URxvt*scrollWithTtyOutput: false
 
-Xcursor.size: 64
+Xcursor.size: 32
