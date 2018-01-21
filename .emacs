@@ -30,6 +30,8 @@
 (add-hook 'after-init-hook (lambda()
                              ;; auto-complete everything everywhere
 			     (global-company-mode t)
+                             ;; show line numbers in every file
+                             (global-linum-mode t)
                              ;; auto-check everything
                              (global-flycheck-mode t)
                              ;; enable help tooltips for code-completion popup
@@ -56,6 +58,7 @@
                            (coverlay-mode t)
                            ;; load the closest coverage file (if none yet)
                            (unless (bound-and-true-p coverlay--loaded-filepath)
+                             ;; need to exclude .test.js[x]? files here
 			     (coverlay-watch-file (concat
 						   (locate-dominating-file
 						    (file-name-directory buffer-file-name)
@@ -97,14 +100,14 @@
  '(css-indent-offset 4)
  '(cursor-type (quote bar))
  '(electric-indent-mode nil)
- '(fringe-mode 20)
+ '(fringe-mode 20 nil (fringe))
  '(hl-line-mode t t)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
  '(menu-bar-mode nil)
  '(package-selected-packages
    (quote
-    (fringe-helper coverlay json-mode markdown-mode js2-mode web-mode company-web flycheck company-quickhelp company-tern)))
+    (tern-context-coloring scss-mode fringe-helper coverlay json-mode markdown-mode js2-mode web-mode company-web flycheck company-quickhelp company-tern)))
  '(scroll-bar-mode nil)
  '(tool-bar-mode nil)
  '(visual-bell t)
@@ -130,6 +133,7 @@
  '(company-tooltip-annotation-selection ((t (:inherit company-tooltip-selection))))
  '(company-tooltip-common-selection ((t (:inherit company-tooltip-annotation-selection))))
  '(company-tooltip-selection ((t (:background "steel blue" :foreground "white"))))
+ '(linum ((t (:background "gray95" :foreground "dim gray"))))
  '(web-mode-current-column-highlight-face ((t (:background "#f0f0f0")))))
 
 ;; give advice to web-mode-highlight-part on how to do its job
@@ -143,21 +147,21 @@
 ;; replace the stock Flycheck double-arrow indicator with a bigger one
 ;; maxmum width is 16px according to emacs docs
 (define-fringe-bitmap 'flycheck-big-indicator
-  (vector #b1110001110000000
-          #b0111000111000000
-          #b0011100011100000
-          #b0001110001110000
-          #b0000111000111000
-          #b0000011100011100
-          #b0000001110001110
-          #b0000000111000111
-          #b0000001110001110
-          #b0000011100011100
-          #b0000111000111000
-          #b0001110001110000
-          #b0011100011100000
-          #b0111000111000000
-          #b1110001110000000
+  (vector #b0000000000000000
+          #b0000000000000000
+          #b0000000000000000
+          #b0011000011000000
+          #b0001100001100000
+          #b0000110000110000
+          #b0000011000011000
+          #b0000001100001100
+          #b0000001100001100
+          #b0000011000011000
+          #b0000110000110000
+          #b0001100001100000
+          #b0011000011000000
+          #b0000000000000000
+          #b0000000000000000
           #b0000000000000000)
   16 16 'center)
 

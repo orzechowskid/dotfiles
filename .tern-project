@@ -1,0 +1,11 @@
+{
+  "plugins": {
+    "context-coloring": {
+      "charOffset": 1
+    },
+    "es_modules": {},
+    "jsx": {},
+    "modules": {},
+    "node": {}
+  }
+}

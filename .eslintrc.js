@@ -10,16 +10,20 @@ module.exports = {
         "arrow-parens": [ "warn", "always" ],
         "comma-dangle": [ "warn", "never" ],
         "func-names": "off",
-        "import/named": "error",
+        "function-paren-newline": "off",
+        "import/named": "warn",
         "indent": [ "warn", 4, {
             "SwitchCase": 1
         } ],
         /* https://github.com/facebookincubator/create-react-app/issues/2631 */
         "jsx-a11y/href-no-hash": "off",
         "no-console": [ "error", {
-            "allow": [ "warn", "error" ]
+            "allow": [ "info", "warn", "error" ]
         } ],
         "no-extra-semi": "warn",
+        "import/no-extraneous-dependencies": [ "warn", {
+            "devDependencies": true
+        } ],
         "no-plusplus": [ "warn", {
             "allowForLoopAfterthoughts": true
         } ],
@@ -31,9 +35,11 @@ module.exports = {
             "ignoreRestSiblings": true
         } ],
         "prefer-arrow-callback": "off",
-        "quotes": [ "error", "backtick", {
+        "prefer-destructuring": [ "warn" ],
+        "quotes": "off",
+/*        "quotes": [ "error", "backtick", {
             "avoidEscape": true
-        } ],
+        } ], */
         "react/jsx-filename-extension": "off",
         "react/jsx-indent": [ "warn", 4 ],
         "react/jsx-indent-props": [ "warn", 4 ],
