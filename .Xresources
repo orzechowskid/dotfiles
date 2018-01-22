@@ -1,6 +1,6 @@
 ! 1920x1080x13.3in : 166dpi
 ! 3200x1800x13.3in : 276dpi
-Xft.dpi: 166
+Xft.dpi: 96
 
 ! URxvt
 ! normal colors
@@ -27,7 +27,7 @@ URxvt*color4: #6495ed
 URxvt:color10: #32a032
 URxvt*color12: #6495ed
 URxvt*depth: 32
-URxvt*font: xft:Source Code Pro Light:size=10,xft:Source Code Pro:size=10
+URxvt*font: xft:Source Code Pro Medium:size=14
 URxvt*foreground: rgb:ffff/ffff/ffff
 URxvt*saveLines:655350
 URxvt*scrollBar: false

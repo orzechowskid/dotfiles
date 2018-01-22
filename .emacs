@@ -19,12 +19,39 @@
 (require 'coverlay)
 ;; automatic syntax checking
 (require 'flycheck)
+;; Handlebars-templates major mode
+(require 'handlebars-mode)
 ;; JSON major mode
 (require 'json-mode)
-;; CSS (and friends) major mode
-(require 'scss-mode)
+;; JS/JSX major mode
+;(require 'rjsx-mode)
 ;; web-development major mode
 (require 'web-mode)
+
+(defun common-javascript-mode-hook ()
+  "Do some things when entering a javascript mode."
+  ;; turn on camelCase-aware code navigation
+  (subword-mode t)
+  ;; assume JS, and enable the JS code analysis engine
+  (tern-mode t)
+  ;; tell web-mode to use JSX where applicable
+  (when (string-match-p ".jsx\\'" buffer-file-name)
+    (web-mode-set-content-type "jsx"))
+  ;; auto-indent upon Enter keypress
+  (electric-indent-mode t)
+  ;; enable test coverage
+  (coverlay-mode t)
+  ;; enable token highlighting
+  (idle-highlight-mode t)
+  ;; code-coverage
+  (unless (string-match-p "test.js[x]?\\'" buffer-file-name)
+    ;; turn on coverage mode if not a test file
+    (coverlay-mode t)
+    (unless (bound-and-true-p coverlay--loaded-filepath)
+      ;; load the closest coverage file if one hasn't been loaded yet
+      (coverlay-watch-file (concat
+                            (locate-dominating-file buffer-file-name "coverage")
+                            "coverage/lcov.info")))))
 
 ;; do some things after initializing the Emacs session:
 (add-hook 'after-init-hook (lambda()
@@ -45,36 +72,23 @@
                             (make-local-variable 'js-indent-level)
                             (setq js-indent-level 2)))
 ;; do some things after turning on web-mode for a given buffer:
-(add-hook 'web-mode-hook (lambda()
-                           ;; turn on camelCase-aware code navigation
-			   (subword-mode t)
-                           ;; assume JS, and enable the JS code analysis engine
-			   (tern-mode t)
-                           ;; assume JSX
-			   (web-mode-set-content-type "jsx")
-                           ;; auto-indent upon Enter keypress
-                           (electric-indent-mode t)
-                           ;; enable test coverage
-                           (coverlay-mode t)
-                           ;; load the closest coverage file (if none yet)
-                           (unless (bound-and-true-p coverlay--loaded-filepath)
-                             ;; need to exclude .test.js[x]? files here
-			     (coverlay-watch-file (concat
-						   (locate-dominating-file
-						    (file-name-directory buffer-file-name)
-						    "coverage")
-						   "coverage"
-						   "/lcov.info")))))
+(add-hook 'web-mode-hook 'common-javascript-mode-hook)
 
+;; turn on web-mode for every file ending in '.js':
+(add-to-list 'auto-mode-alist '("\\.js\\'" . web-mode))
 ;; turn on json-mode for every file ending in '.json':
 (add-to-list 'json-mode-auto-mode-list '("\\.json\\'" . json-mode))
-;; turn on web-mode for every file ending in '.js' or '.jsx':
-(add-to-list 'auto-mode-alist '("\\.js[x]?\\'" . web-mode))
+;; turn on rjsx-mode for every file ending in '.jsx':
+;(add-to-list 'auto-mode-alist '("\\.jsx\\'" . rjsx-mode))
+;; turn on web-mode for every file ending in '.jsx':
+(add-to-list 'auto-mode-alist '("\\.jsx\\'" . web-mode))
 ;; turn on scss-mode for every file ending in '.css' or '.scss':
 (add-to-list 'auto-mode-alist '("\\.[s]?css\\'" . scss-mode))
 ;; turn on scss-mode for every file ending in '.less':
 (add-to-list 'auto-mode-alist '("\\.less\\'" . scss-mode))
-
+;; turn on handlebars-mode for every file ending in '.less':
+(add-to-list 'auto-mode-alist '("\\.hbs\\'" . handlebars-mode))
+;; set up some indent-related nonsense for web-mode
 (add-to-list 'web-mode-indentation-params '("lineup-args" . nil))
 (add-to-list 'web-mode-indentation-params '("lineup-calls" . nil))
 (add-to-list 'web-mode-indentation-params '("lineup-concats" . nil))
@@ -95,7 +109,7 @@
  '(company-minimum-prefix-length 1)
  '(company-quickhelp-delay 0.25)
  '(company-tooltip-align-annotations t)
- '(coverlay:tested-line-background-color "")
+ '(coverlay:tested-line-background-color nil)
  '(coverlay:untested-line-background-color "#ffe8e8")
  '(css-indent-offset 4)
  '(cursor-type (quote bar))
@@ -104,24 +118,16 @@
  '(hl-line-mode t t)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
+ '(js2-mode-show-parse-errors nil)
+ '(js2-mode-show-strict-warnings nil)
  '(menu-bar-mode nil)
  '(package-selected-packages
    (quote
-    (tern-context-coloring scss-mode fringe-helper coverlay json-mode markdown-mode js2-mode web-mode company-web flycheck company-quickhelp company-tern)))
+    (company-web string-inflection handlebars-mode idle-highlight-mode coverlay json-mode markdown-mode web-mode company-quickhelp company-tern flycheck tern-context-coloring scss-mode)))
  '(scroll-bar-mode nil)
+ '(sgml-basic-offset 4)
  '(tool-bar-mode nil)
- '(visual-bell t)
- '(web-mode-attr-indent-offset 4)
- '(web-mode-code-indent-offset 4)
- '(web-mode-css-indent-offset 4)
- '(web-mode-enable-auto-indentation t)
- '(web-mode-enable-auto-quoting nil)
- '(web-mode-enable-current-column-highlight t)
- '(web-mode-enable-current-element-highlight nil)
- '(web-mode-enable-heredoc-fontification nil)
- '(web-mode-enable-html-entities-fontification nil)
- '(web-mode-indent-style 2)
- '(web-mode-markup-indent-offset 4))
+ '(visual-bell t))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -136,45 +142,26 @@
  '(linum ((t (:background "gray95" :foreground "dim gray"))))
  '(web-mode-current-column-highlight-face ((t (:background "#f0f0f0")))))
 
-;; give advice to web-mode-highlight-part on how to do its job
-(defadvice web-mode-highlight-part (around tweak-jsx activate)
-  "Make JSX highlighting great again."
-
-  (if (equal web-mode-content-type "jsx")
-      (let ((web-mode-enable-part-face nil)) ad-do-it)
-    ad-do-it))
-
 ;; replace the stock Flycheck double-arrow indicator with a bigger one
 ;; maxmum width is 16px according to emacs docs
 (define-fringe-bitmap 'flycheck-big-indicator
   (vector #b0000000000000000
           #b0000000000000000
           #b0000000000000000
-          #b0011000011000000
-          #b0001100001100000
-          #b0000110000110000
-          #b0000011000011000
-          #b0000001100001100
-          #b0000001100001100
-          #b0000011000011000
-          #b0000110000110000
-          #b0001100001100000
-          #b0011000011000000
+          #b0111000111000000
+          #b0011100011100000
+          #b0001110001110000
+          #b0000111000111000
+          #b0000011100011100
+          #b0000011100011100
+          #b0000111000111000
+          #b0001110001110000
+          #b0011100011100000
+          #b0111000111000000
           #b0000000000000000
           #b0000000000000000
           #b0000000000000000)
   16 16 'center)
-
-(flycheck-define-error-level 'warning
-  :severity 1
-  :overlay-category 'flycheck-warning-overlay
-  :fringe-bitmap 'flycheck-big-indicator
-  :fringe-face 'flycheck-fringe-warning)
-(flycheck-define-error-level 'error
-  :severity 2
-  :overlay-category 'flycheck-error-overlay
-  :fringe-bitmap 'flycheck-big-indicator
-  :fringe-face 'flycheck-fringe-error)
 
 (defun delete-word (arg)
   "Delete characters forward until encountering the end of a word.
@@ -188,9 +175,23 @@ With argument ARG, do this that many times."
   (interactive "p")
   (delete-word (- arg)))
 
+;; turn on ESLint for each file opened in rjsx-mode
+;(flycheck-add-mode 'javascript-eslint 'rjsx-mode)
 ;; turn on ESLint for each file opened in web-mode
 (flycheck-add-mode 'javascript-eslint 'web-mode)
+;; turn on stylelint for each file opened in scss-mode
 (flycheck-add-mode 'scss-stylelint 'scss-mode)
+
+(flycheck-define-error-level 'warning
+  :severity 1
+  :overlay-category 'flycheck-warning-overlay
+  :fringe-bitmap 'flycheck-big-indicator
+  :fringe-face 'flycheck-fringe-warning)
+(flycheck-define-error-level 'error
+  :severity 2
+  :overlay-category 'flycheck-error-overlay
+  :fringe-bitmap 'flycheck-big-indicator
+  :fringe-face 'flycheck-fringe-error)
 
 (global-hl-line-mode t)
 
