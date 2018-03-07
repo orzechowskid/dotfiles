@@ -19,16 +19,22 @@
 (require 'coverlay)
 ;; automatic syntax checking
 (require 'flycheck)
-;; Handlebars-templates major mode
-(require 'handlebars-mode)
 ;; JSON major mode
 (require 'json-mode)
 ;; fun mode-line customization
 (require 'powerline)
-;; Javascript formatting minor mode
-(require 'prettier-js)
+;; Markdown major mode
+(require 'markdown-mode)
+;; SCSS major mode
+;(require 'scss-mode)
 ;; web-development major mode
 (require 'web-mode)
+
+(defun backward-delete-word (arg)
+  "Delete characters backward until encountering the beginning of a word.
+With argument ARG, do this that many times."
+  (interactive "p")
+  (delete-word (- arg)))
 
 (defun buffer-contains-string (string)
   "Search the top of the current buffer for STRING."
@@ -37,22 +43,37 @@
       (goto-char 0)
       (search-forward string 1023 t))))
 
+(defun common-css-mode-hook ()
+  "Do some things when entering a CSS mode."
+  ;; turn on syntax-checking mode
+  (flycheck-mode t)
+  ;; turn off code-coverage mode
+  (coverlay-mode nil)
+  ;; enable code-completion mode
+  (company-mode t)
+  ;; turn on camelCase-aware code navigation
+  (subword-mode t)
+  ;; select the appropriate syntax checker
+  (flycheck-select-checker 'scss-stylelint))
+
 (defun common-javascript-mode-hook ()
   "Do some things when entering a javascript mode."
+  ;; turn on syntax-checking mode
+  (flycheck-mode t)
   ;; turn on camelCase-aware code navigation
   (subword-mode t)
   ;; assume JS, and enable the JS code analysis engine
   (tern-mode t)
-  ;; enable prettier minor-mode for code formatting
-  (prettier-js-mode t)
+  ;; enable code-completion mode
+  (company-mode)
   ;; tell web-mode to use JSX where applicable
-  (when (or (string-match-p ".jsx\\'" buffer-file-name)
-            (buffer-contains-string "import React"))
+  (when (or (string-match-p ".js[x]?\\'" buffer-file-name)
+            (buffer-contains-string "import React") ;; es6+ .js
+            (or (buffer-contains-string "define([")
+                (buffer-contains-string "require(["))) ;; requireJS
     (web-mode-set-content-type "jsx"))
   ;; auto-indent upon Enter keypress
   (electric-indent-mode t)
-  ;; enable test coverage
-  (coverlay-mode t)
   ;; enable token highlighting
   (idle-highlight-mode t)
   ;; code-coverage
@@ -64,6 +85,33 @@
       (coverlay-watch-file (concat
                             (locate-dominating-file buffer-file-name "coverage")
                             "coverage/lcov.info")))))
+
+(defun common-json-mode-hook ()
+  "Do some things when entering a CSS-like mode."
+  ;; turn on syntax-checking mode
+  (flycheck-mode t)
+  ;; turn off code-coverage mode
+  (coverlay-mode nil)
+  ;; turn on camelCase-aware code navigation
+  (subword-mode t)
+  ;; select the appropriate syntax checker
+  (flycheck-select-checker 'json-jsonlint))
+
+(defun delete-word (arg)
+  "Delete characters forward until encountering the end of a word.
+With argument ARG, do this that many times."
+  (interactive "p")
+  (delete-region (point) (progn (forward-word arg) (point))))
+
+(defun lint-fix-js ()
+  "Run eslint --fix on current buffer."
+  (if (executable-find "eslint_d")
+      ; progn to do things in guaranteed order
+      (progn
+        (if (eq 0 (call-process "eslint_d" nil "*ESLint Errors*" nil "--fix" buffer-file-name))
+            (revert-buffer t t t)
+          (message "eslint_d reported error")))
+    (message "eslint_d not found")))
 
 (defun set-powerline-theme ()
   "Powerline customization."
@@ -125,37 +173,37 @@
 ;; do some things after initializing the Emacs session:
 (add-hook 'after-init-hook
           (lambda ()
-            ;; auto-complete everything everywhere
-            (global-company-mode t)
             ;; show line numbers in every file
             (global-linum-mode t)
-            ;; auto-check everything
-            (global-flycheck-mode t)
-            ;; enable help tooltips for code-completion popup
+            ;; enable help tooltips for code-completion popup (when enabled)
             (company-quickhelp-mode 1)))
-;; do some things after turning on scss-mode for a given buffer:
-(add-hook 'scss-mode-hook
+;; run the appropriate type-specific hook after turning on web-mode for a given buffer:
+(add-hook 'web-mode-hook
           (lambda ()
-            ;; turn on camelCase-aware code navigation
-            (subword-mode t)))
-;; do some things after turning on json-mode for a given buffer:
-(add-hook 'json-mode-hook
+            (let ((buffer-type (file-name-extension (buffer-file-name))))
+              (cond ((string-match-p "js[x]?\\'" buffer-type)
+                     (common-javascript-mode-hook))
+                    ((string-match-p "json\\'" buffer-type)
+                     (common-json-mode-hook))))))
+
+(add-hook 'after-save-hook
           (lambda ()
-            (make-local-variable 'js-indent-level)
-            (setq js-indent-level 2)))
-;; do some things after turning on web-mode for a given buffer:
-(add-hook 'web-mode-hook 'common-javascript-mode-hook)
+            (when (and (eq major-mode 'web-mode)
+                       (equal web-mode-content-type "jsx"))
+              (lint-fix-js))))
 
 ;; turn on web-mode for every file ending in '.js' or '.jsx':
 (add-to-list 'auto-mode-alist '("\\.js[x]?\\'" . web-mode))
-;; turn on json-mode for every file ending in '.json':
-(add-to-list 'json-mode-auto-mode-list '("\\.json\\'" . json-mode))
-;; turn on scss-mode for every file ending in '.css' or '.scss':
-(add-to-list 'auto-mode-alist '("\\.[s]?css\\'" . scss-mode))
-;; turn on scss-mode for every file ending in '.less':
-(add-to-list 'auto-mode-alist '("\\.less\\'" . scss-mode))
-;; turn on handlebars-mode for every file ending in '.less':
-(add-to-list 'auto-mode-alist '("\\.hbs\\'" . handlebars-mode))
+;; turn on web-mode for every file ending in '.json':
+(add-to-list 'auto-mode-alist '("\\.json\\'" . web-mode))
+;; turn on css-mode for every file ending in '.css' or '.scss':
+(add-to-list 'auto-mode-alist '("\\.[s]?css\\'" . css-mode))
+;; turn on css-mode for every file ending in '.less':
+(add-to-list 'auto-mode-alist '("\\.less\\'" . css-mode))
+;; turn on web-mode for every file ending in '.hbs':
+(add-to-list 'auto-mode-alist '("\\.hbs\\'" . web-mode))
+;; turn on markdown-mode for every file ending in '.md':
+(add-to-list 'auto-mode-alist '("\\.md\\'" . markdown-mode))
 ;; set up some indent-related nonsense for web-mode
 (add-to-list 'web-mode-indentation-params '("lineup-args" . nil))
 (add-to-list 'web-mode-indentation-params '("lineup-calls" . nil))
@@ -167,7 +215,6 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(column-number-mode t)
  '(company-backends
    (quote
     (company-capf company-css company-files company-tern company-web)))
@@ -180,8 +227,11 @@
  '(coverlay:tested-line-background-color nil)
  '(coverlay:untested-line-background-color "#ffe8e8")
  '(css-indent-offset 4)
+ '(css-mode-hook (quote common-css-mode-hook))
+ '(cua-mode t nil (cua-base))
  '(cursor-type (quote bar))
  '(electric-indent-mode nil)
+ '(flycheck-javascript-eslint-executable "eslint_d")
  '(frame-title-format (quote ("%f")) t)
  '(fringe-mode 20 nil (fringe))
  '(hl-line-mode t t)
@@ -190,20 +240,9 @@
  '(js2-mode-show-parse-errors nil)
  '(js2-mode-show-strict-warnings nil)
  '(menu-bar-mode nil)
-; '(mode-line-format
-;   (quote
-;    ("%e" mode-line-front-space
-;     (:propertize "%b[%*]" face
-;                  (:weight bold))
-;     " " mode-line-modes " "
-;     (vc-mode vc-mode)
-;     mode-line-end-spaces)))
  '(package-selected-packages
    (quote
-    (powerline prettier-js company-web string-inflection handlebars-mode idle-highlight-mode coverlay json-mode markdown-mode web-mode company-quickhelp company-tern flycheck tern-context-coloring scss-mode)))
- '(powerline-display-buffer-size nil)
- '(powerline-display-hud nil)
- '(powerline-display-mule-info nil)
+    (fill-column-indicator import-js sass-mode powerline company-web string-inflection idle-highlight-mode coverlay json-mode markdown-mode web-mode company-quickhelp company-tern flycheck tern-context-coloring scss-mode)))
  '(scroll-bar-mode nil)
  '(sgml-basic-offset 4)
  '(tool-bar-mode nil)
@@ -219,10 +258,11 @@
  '(company-tooltip-annotation-selection ((t (:inherit company-tooltip-selection))))
  '(company-tooltip-common-selection ((t (:inherit company-tooltip-annotation-selection))))
  '(company-tooltip-selection ((t (:background "steel blue" :foreground "white"))))
- '(linum ((t (:background "gray95" :foreground "dim gray"))))
+ '(fringe ((t (:background "grey98"))))
+ '(linum ((t (:background "gray98" :foreground "dim gray"))))
  '(powerline-active0 ((t (:background "tomato" :foreground "white" :weight bold))))
- '(powerline-active1 ((t (:background "gray95" :foreground "black"))))
- '(powerline-active2 ((t (:background "gray95" :foreground "black"))))
+ '(powerline-active1 ((t (:background "gray95"))))
+ '(powerline-active2 ((t (:background "gray95"))))
  '(powerline-inactive0 ((t (:background "gray98"))))
  '(powerline-inactive1 ((t (:background "gray98"))))
  '(powerline-inactive2 ((t (:background "gray98"))))
@@ -249,24 +289,10 @@
           #b0000000000000000)
   16 16 'center)
 
-(defun delete-word (arg)
-  "Delete characters forward until encountering the end of a word.
-With argument ARG, do this that many times."
-  (interactive "p")
-  (delete-region (point) (progn (forward-word arg) (point))))
-
-(defun backward-delete-word (arg)
-  "Delete characters backward until encountering the beginning of a word.
-With argument ARG, do this that many times."
-  (interactive "p")
-  (delete-word (- arg)))
-
-;; turn on ESLint for each file opened in rjsx-mode
-;(flycheck-add-mode 'javascript-eslint 'rjsx-mode)
-;; turn on ESLint for each file opened in web-mode
+;; turn on some syntax checkers
 (flycheck-add-mode 'javascript-eslint 'web-mode)
-;; turn on stylelint for each file opened in scss-mode
-(flycheck-add-mode 'scss-stylelint 'scss-mode)
+(flycheck-add-mode 'json-jsonlint 'web-mode)
+(flycheck-add-mode 'scss-stylelint 'web-mode)
 
 (flycheck-define-error-level 'warning
   :severity 1
@@ -302,7 +328,6 @@ With argument ARG, do this that many times."
 
 (set-face-background 'hl-line "#f8f8f8")
 (set-powerline-theme)
-
 
 (provide '.emacs)
 ;;; .emacs ends here
