@@ -30,6 +30,9 @@
 ;; web-development major mode
 (require 'web-mode)
 
+(defvar-local my-fci-mode-stack '()
+  "track fci-mode state to aid advice functions.")
+
 (defun backward-delete-word (arg)
   "Delete characters backward until encountering the beginning of a word.
 With argument ARG, do this that many times."
@@ -65,7 +68,9 @@ With argument ARG, do this that many times."
   ;; assume JS, and enable the JS code analysis engine
   (tern-mode t)
   ;; enable code-completion mode
-  (company-mode)
+  (company-mode t)
+  ;; set a vertical rule at column whatever
+  (fci-mode t)
   ;; tell web-mode to use JSX where applicable
   (when (or (string-match-p ".js[x]?\\'" buffer-file-name)
             (buffer-contains-string "import React") ;; es6+ .js
@@ -76,6 +81,8 @@ With argument ARG, do this that many times."
   (electric-indent-mode t)
   ;; enable token highlighting
   (idle-highlight-mode t)
+  ;; lint upon save
+  (add-hook 'after-save-hook 'lint-fix-js)
   ;; code-coverage
   (unless (string-match-p "test.js[x]?\\'" buffer-file-name)
     ;; turn on coverage mode if not a test file
@@ -106,12 +113,32 @@ With argument ARG, do this that many times."
 (defun lint-fix-js ()
   "Run eslint --fix on current buffer."
   (if (executable-find "eslint_d")
-      ; progn to do things in guaranteed order
+      ;; progn to do things in guaranteed order
       (progn
         (if (eq 0 (call-process "eslint_d" nil "*ESLint Errors*" nil "--fix" buffer-file-name))
             (revert-buffer t t t)
-          (message "eslint_d reported error")))
+          (message "eslint_d couldn't --fix due to errors")))
     (message "eslint_d not found")))
+
+(defun fci-conditional-enable (&rest _)
+  "Conditionally (re-)enable fci-mode."
+  (when (eq (pop my-fci-mode-stack) t)
+    (fci-mode t)))
+
+(defun fci-get-and-disable (&rest _)
+  "Store current status of fci-mode, and disable if needed."
+  (when (boundp 'fci-mode)
+    (push fci-mode my-fci-mode-stack)
+    (when fci-mode
+      ;; turns out nil actually enables fci-mode, not disables it :|
+      (fci-mode -1))))
+
+(defun fci-hack (advised-func &rest args)
+  "Disable fci-mode, call ADVISED-FUNC with ARGS, then re-enable fci-mode."
+  (progn
+    (fci-get-and-disable)
+    (apply advised-func args)
+    (fci-conditional-enable)))
 
 (defun set-powerline-theme ()
   "Powerline customization."
@@ -186,12 +213,6 @@ With argument ARG, do this that many times."
                     ((string-match-p "json\\'" buffer-type)
                      (common-json-mode-hook))))))
 
-(add-hook 'after-save-hook
-          (lambda ()
-            (when (and (eq major-mode 'web-mode)
-                       (equal web-mode-content-type "jsx"))
-              (lint-fix-js))))
-
 ;; turn on web-mode for every file ending in '.js' or '.jsx':
 (add-to-list 'auto-mode-alist '("\\.js[x]?\\'" . web-mode))
 ;; turn on web-mode for every file ending in '.json':
@@ -209,6 +230,13 @@ With argument ARG, do this that many times."
 (add-to-list 'web-mode-indentation-params '("lineup-calls" . nil))
 (add-to-list 'web-mode-indentation-params '("lineup-concats" . nil))
 (add-to-list 'web-mode-indentation-params '("lineup-ternary" . nil))
+
+;; disable fci-mode while certain operations are in progress
+(advice-add 'web-mode-on-after-change :around #'fci-hack)
+(advice-add 'web-mode-on-post-command :around #'fci-hack)
+(add-hook 'company-completion-started-hook 'fci-get-and-disable)
+(add-hook 'company-completion-cancelled-hook 'fci-conditional-enable)
+(add-hook 'company-completion-finished-hook 'fci-conditional-enable)
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
@@ -231,6 +259,7 @@ With argument ARG, do this that many times."
  '(cua-mode t nil (cua-base))
  '(cursor-type (quote bar))
  '(electric-indent-mode nil)
+ '(fill-column 80)
  '(flycheck-javascript-eslint-executable "eslint_d")
  '(frame-title-format (quote ("%f")) t)
  '(fringe-mode 20 nil (fringe))
@@ -246,7 +275,8 @@ With argument ARG, do this that many times."
  '(scroll-bar-mode nil)
  '(sgml-basic-offset 4)
  '(tool-bar-mode nil)
- '(visual-bell t))
+ '(visual-bell t)
+ '(web-mode-enable-auto-quoting nil))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
