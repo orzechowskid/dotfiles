@@ -27,8 +27,9 @@ URxvt*color4: #6495ed
 URxvt:color10: #32a032
 URxvt*color12: #6495ed
 URxvt*depth: 32
-URxvt*font: xft:Source Code Variable:size=8
+URxvt*font: xft:Source Code Pro Extra Light:size=9
 URxvt*foreground: rgb:ffff/ffff/ffff
+URxvt*letterSpace: 2
 URxvt*saveLines:655350
 URxvt*scrollBar: false
 URxvt*scrollWithTtyOutput: false
