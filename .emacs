@@ -8,7 +8,6 @@
 ;; enable package-loading from MELPA
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/"))
-(package-initialize)
 
 ;; code completion
 (require 'company)
@@ -244,34 +243,30 @@ With argument ARG, do this that many times."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(company-backends
-   (quote
-    (company-capf company-css company-files company-tern company-web)))
+   '(company-capf company-css company-files company-tern company-web))
  '(company-files-exclusions
-   (quote
-    (".o" "~" "#" ".bin" ".lbin" ".so" ".a" ".ln" ".blg" ".bbl" ".elc" ".lof" ".glo" ".idx" ".lot" ".svn/" ".hg/" ".git/" ".bzr/" "CVS/" "_darcs/" "_MTN/")))
+   '(".o" "~" "#" ".bin" ".lbin" ".so" ".a" ".ln" ".blg" ".bbl" ".elc" ".lof" ".glo" ".idx" ".lot" ".svn/" ".hg/" ".git/" ".bzr/" "CVS/" "_darcs/" "_MTN/"))
  '(company-minimum-prefix-length 1)
  '(company-quickhelp-delay 0.25)
  '(company-tooltip-align-annotations t)
  '(coverlay:tested-line-background-color nil)
  '(coverlay:untested-line-background-color "#ffe8e8")
  '(css-indent-offset 4)
- '(css-mode-hook (quote common-css-mode-hook))
+ '(css-mode-hook 'common-css-mode-hook)
  '(cua-mode t nil (cua-base))
- '(cursor-type (quote bar))
+ '(cursor-type 'bar)
  '(electric-indent-mode nil)
  '(fill-column 80)
  '(flycheck-javascript-eslint-executable "eslint_d")
- '(frame-title-format (quote ("%f")) t)
+ '(font-use-system-font t)
+ '(frame-title-format '("%f") t)
  '(fringe-mode 20 nil (fringe))
  '(hl-line-mode t t)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
- '(js2-mode-show-parse-errors nil)
- '(js2-mode-show-strict-warnings nil)
  '(menu-bar-mode nil)
  '(package-selected-packages
-   (quote
-    (fill-column-indicator import-js sass-mode powerline company-web string-inflection idle-highlight-mode coverlay json-mode markdown-mode web-mode company-quickhelp company-tern flycheck tern-context-coloring scss-mode)))
+   '(fill-column-indicator import-js sass-mode powerline company-web string-inflection idle-highlight-mode coverlay json-mode markdown-mode web-mode company-quickhelp company-tern flycheck tern-context-coloring scss-mode))
  '(scroll-bar-mode nil)
  '(sgml-basic-offset 4)
  '(tool-bar-mode nil)

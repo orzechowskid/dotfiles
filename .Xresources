@@ -29,8 +29,13 @@ URxvt*color12: #6495ed
 URxvt*depth: 32
 URxvt*font: xft:Source Code Pro Medium:size=8
 URxvt*foreground: rgb:ffff/ffff/ffff
+URxvt*letterSpace: 2
 URxvt*saveLines:655350
 URxvt*scrollBar: false
 URxvt*scrollWithTtyOutput: false
 
-Xcursor.size: 32
+Xcursor.size: 48
+
+Emacs*MenuBar: false
+Emacs*ScrollBar: false
+Emacs*ToolBar: false
