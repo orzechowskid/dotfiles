@@ -17,7 +17,7 @@ module.exports = {
         } ],
         /* https://github.com/facebookincubator/create-react-app/issues/2631 */
         "jsx-a11y/href-no-hash": "off",
-        "no-console": [ "error", {
+        "no-console": [ "warn", {
             "allow": [ "info", "warn", "error" ]
         } ],
         "no-extra-semi": "warn",
@@ -35,11 +35,12 @@ module.exports = {
             "ignoreRestSiblings": true
         } ],
         "prefer-arrow-callback": "off",
-        "prefer-destructuring": [ "warn" ],
+        // gets annoying when trying to set a property on an object
+        "prefer-destructuring": "off",
         "quotes": "off",
-/*        "quotes": [ "error", "backtick", {
-            "avoidEscape": true
-        } ], */
+        /*        "quotes": [ "error", "backtick", {
+           "avoidEscape": true
+           } ], */
         "react/jsx-filename-extension": "off",
         "react/jsx-indent": [ "warn", 4 ],
         "react/jsx-indent-props": [ "warn", 4 ],

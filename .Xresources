@@ -23,16 +23,21 @@ Xft.dpi: 276
 ! color15 white
 
 URxvt*background: rgba:0000/0000/0000/d800
+URxvt*buffered: true
 URxvt*color4: #6495ed
-URxvt:color10: #32a032
+URxvt.color10: #32a032
 URxvt*color12: #6495ed
 URxvt*depth: 32
-URxvt*font: xft:Source Code Pro Medium:size=8
+
+URxvt*font: xft:Source Code Pro:style=Light:pixelsize=30,xft:Symbola:pixelsize=30
+URxvt.boldFont: xft:Source Code Pro:style=Regular:pixelsize=30,xft:Symbola:pixelsize=30
+URxvt.italicFont: xft:Source Code Pro Light:style=italic:pixelsize=30,xft:Symbola:pixelsize=30
 URxvt*foreground: rgb:ffff/ffff/ffff
 URxvt*letterSpace: 2
 URxvt*saveLines:655350
 URxvt*scrollBar: false
 URxvt*scrollWithTtyOutput: false
+URxvt*skipScroll: true
 
 Xcursor.size: 48
 
