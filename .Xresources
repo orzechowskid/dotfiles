@@ -1,6 +1,9 @@
 ! 1920x1080x13.3in : 166dpi
+! 2560x1440x13.3in : 221ppi
 ! 3200x1800x13.3in : 276dpi
-Xft.dpi: 276
+Xft.dpi: 221
+
+! 3200x1800 works best with font scaling set to 1.5 via gnome-tweak-tool
 
 ! URxvt
 ! normal colors
@@ -27,14 +30,16 @@ URxvt*color4: #6495ed
 URxvt:color10: #32a032
 URxvt*color12: #6495ed
 URxvt*depth: 32
-URxvt*font: xft:Source Code Pro Extra Light:size=9
+URxvt*font: xft:Source Code Pro Light:size=7
 URxvt*foreground: rgb:ffff/ffff/ffff
-URxvt*letterSpace: 2
+URxvt*letterSpace: 1
 URxvt*saveLines:655350
 URxvt*scrollBar: false
 URxvt*scrollWithTtyOutput: false
 
-Xcursor.size: 48
+Xcursor.size: 32
 
 Emacs*MenuBar: false
 Emacs*ScrollBar: false
+Emacs*ToolBar: false
+Emacs*font: Source Code Pro Light-16

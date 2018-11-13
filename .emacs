@@ -8,6 +8,7 @@
 ;; enable package-loading from MELPA
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/"))
+(package-refresh-contents t)
 
 ;; code completion
 (require 'company)
@@ -49,8 +50,6 @@ With argument ARG, do this that many times."
   "Do some things when entering a CSS mode."
   ;; turn on syntax-checking mode
   (flycheck-mode t)
-  ;; turn off code-coverage mode
-  (coverlay-mode nil)
   ;; enable code-completion mode
   (company-mode t)
   ;; turn on camelCase-aware code navigation
@@ -85,7 +84,8 @@ With argument ARG, do this that many times."
   ;; code-coverage
   (unless (string-match-p "test.js[x]?\\'" buffer-file-name)
     ;; turn on coverage mode if not a test file
-    (coverlay-mode t)
+    
+    (coverlay-minor-mode t)
     (unless (bound-and-true-p coverlay--loaded-filepath)
       ;; load the closest coverage file if one hasn't been loaded yet
       (coverlay-watch-file (concat
@@ -96,12 +96,14 @@ With argument ARG, do this that many times."
   "Do some things when entering a CSS-like mode."
   ;; turn on syntax-checking mode
   (flycheck-mode t)
-  ;; turn off code-coverage mode
-  (coverlay-mode nil)
   ;; turn on camelCase-aware code navigation
   (subword-mode t)
   ;; select the appropriate syntax checker
   (flycheck-select-checker 'json-jsonlint))
+
+(defun common-lisp-mode-hook ()
+  "Do some things when entering a Lisp mode."
+  (company-mode t))
 
 (defun delete-word (arg)
   "Delete characters forward until encountering the end of a word.
@@ -199,8 +201,6 @@ With argument ARG, do this that many times."
 ;; do some things after initializing the Emacs session:
 (add-hook 'after-init-hook
           (lambda ()
-            ;; show line numbers in every file
-            (global-linum-mode t)
             ;; enable help tooltips for code-completion popup (when enabled)
             (company-quickhelp-mode 1)))
 ;; run the appropriate type-specific hook after turning on web-mode for a given buffer:
@@ -211,6 +211,9 @@ With argument ARG, do this that many times."
                      (common-javascript-mode-hook))
                     ((string-match-p "json\\'" buffer-type)
                      (common-json-mode-hook))))))
+;; do some things when entering lisp modes
+(add-hook 'lisp-mode-hook 'common-lisp-mode-hook)
+(add-hook 'emacs-lisp-mode-hook 'common-lisp-mode-hook)
 
 ;; turn on web-mode for every file ending in '.js' or '.jsx':
 (add-to-list 'auto-mode-alist '("\\.js[x]?\\'" . web-mode))
@@ -249,7 +252,7 @@ With argument ARG, do this that many times."
  '(company-minimum-prefix-length 1)
  '(company-quickhelp-delay 0.25)
  '(company-tooltip-align-annotations t)
- '(coverlay:tested-line-background-color nil)
+ '(coverlay:mark-tested-lines nil)
  '(coverlay:untested-line-background-color "#ffe8e8")
  '(css-indent-offset 4)
  '(css-mode-hook 'common-css-mode-hook)
@@ -258,15 +261,13 @@ With argument ARG, do this that many times."
  '(electric-indent-mode nil)
  '(fill-column 80)
  '(flycheck-javascript-eslint-executable "eslint_d")
- '(font-use-system-font t)
  '(frame-title-format '("%f") t)
  '(fringe-mode 20 nil (fringe))
  '(hl-line-mode t t)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
- '(menu-bar-mode nil)
  '(package-selected-packages
-   '(fill-column-indicator import-js sass-mode powerline company-web string-inflection idle-highlight-mode coverlay json-mode markdown-mode web-mode company-quickhelp company-tern flycheck tern-context-coloring scss-mode))
+   '(magit nlinum fill-column-indicator import-js sass-mode powerline company-web string-inflection idle-highlight-mode coverlay json-mode markdown-mode web-mode company-quickhelp company-tern flycheck tern-context-coloring scss-mode))
  '(scroll-bar-mode nil)
  '(sgml-basic-offset 4)
  '(tool-bar-mode nil)
@@ -291,7 +292,14 @@ With argument ARG, do this that many times."
  '(powerline-inactive0 ((t (:background "gray98"))))
  '(powerline-inactive1 ((t (:background "gray98"))))
  '(powerline-inactive2 ((t (:background "gray98"))))
- '(web-mode-current-column-highlight-face ((t (:background "#f0f0f0")))))
+ '(web-mode-current-column-highlight-face ((t (:background "#f0f0f0"))))
+ '(web-mode-jsx-depth-1-face ((t nil)))
+ '(web-mode-jsx-depth-2-face ((t nil)))
+ '(web-mode-jsx-depth-3-face ((t nil)))
+ '(web-mode-jsx-depth-4-face ((t nil)))
+ '(web-mode-jsx-depth-5-face ((t nil)))
+ '(web-mode-jsx-depth-6-face ((t nil)))
+ '(web-mode-jsx-depth-7-face ((t nil))))
 
 ;; replace the stock Flycheck double-arrow indicator with a bigger one
 ;; maxmum width is 16px according to emacs docs
@@ -353,6 +361,9 @@ With argument ARG, do this that many times."
 
 (set-face-background 'hl-line "#f8f8f8")
 (set-powerline-theme)
+
+(setq auto-window-vscroll nil
+      window-system-default-frame-alist '((font . "xft:Source Code Pro Light:size=36")))
 
 (provide '.emacs)
 ;;; .emacs ends here
