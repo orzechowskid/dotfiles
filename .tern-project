@@ -1,8 +1,13 @@
 {
+  "libs": [
+    "browser",
+    "react"
+  ],
   "plugins": {
     "context-coloring": {
       "charOffset": 1
     },
+    "doc_comment": {},
     "es_modules": {},
     "jsx": {},
     "modules": {},

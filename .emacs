@@ -2,6 +2,9 @@
 ;;; Commentary:
 ;;; Code:
 
+(prefer-coding-system 'utf-8)
+(set-language-environment "UTF-8")
+
 ;; load any non-standard packages from here
 (add-to-list 'load-path "~/.emacs.d/lisp")
 
@@ -13,20 +16,26 @@
 ;; code completion
 (require 'company)
 (require 'company-quickhelp) ; tooltip for code-completion popup
-(require 'company-tern) ; Javascript code analysis
-(require 'company-web) ; HTML completion
+                                        ;(require 'company-web) ; HTML completion
+(require 'company-lsp)
 ;; inline code coverage indicators
 (require 'coverlay)
 ;; automatic syntax checking
 (require 'flycheck)
+;; draw a margin at column whatever
+(require 'fill-column-indicator)
+;; highlight current token
+(require 'idle-highlight-mode)
 ;; JSON major mode
 (require 'json-mode)
+;; LSP minor mode
+(require 'lsp-javascript-typescript)
 ;; fun mode-line customization
 (require 'powerline)
 ;; Markdown major mode
 (require 'markdown-mode)
 ;; SCSS major mode
-;(require 'scss-mode)
+(require 'scss-mode)
 ;; web-development major mode
 (require 'web-mode)
 
@@ -48,7 +57,7 @@ With argument ARG, do this that many times."
 
 (defun common-css-mode-hook ()
   "Do some things when entering a CSS mode."
-  ;; turn on syntax-checking mode
+  ;; enable syntax checking
   (flycheck-mode t)
   ;; enable code-completion mode
   (company-mode t)
@@ -59,17 +68,19 @@ With argument ARG, do this that many times."
 
 (defun common-javascript-mode-hook ()
   "Do some things when entering a javascript mode."
-  ;; turn on syntax-checking mode
+  ;; enable syntax checking
   (flycheck-mode t)
+  ;; select the appropriate syntax checker
+  (flycheck-select-checker 'javascript-eslint)
+  ;; turn on code-coverage mode
+  (coverlay-minor-mode t)
   ;; turn on camelCase-aware code navigation
   (subword-mode t)
-  ;; assume JS, and enable the JS code analysis engine
-  (tern-mode t)
   ;; enable code-completion mode
   (company-mode t)
   ;; set a vertical rule at column whatever
   (fci-mode t)
-  ;; tell web-mode to use JSX where applicable
+  ;; tell web-mode to use JSX for frontend JS code
   (when (or (string-match-p ".js[x]?\\'" buffer-file-name)
             (buffer-contains-string "import React") ;; es6+ .js
             (or (buffer-contains-string "define([")
@@ -80,7 +91,7 @@ With argument ARG, do this that many times."
   ;; enable token highlighting
   (idle-highlight-mode t)
   ;; lint upon save
-  (add-hook 'after-save-hook 'lint-fix-js)
+  (add-hook 'after-save-hook 'lint-fix-js t t)
   ;; code-coverage
   (unless (string-match-p "test.js[x]?\\'" buffer-file-name)
     ;; turn on coverage mode if not a test file
@@ -93,8 +104,8 @@ With argument ARG, do this that many times."
                             "coverage/lcov.info")))))
 
 (defun common-json-mode-hook ()
-  "Do some things when entering a CSS-like mode."
-  ;; turn on syntax-checking mode
+  "Do some things when entering a JSON mode."
+  ;; enable syntax checking
   (flycheck-mode t)
   ;; turn on camelCase-aware code navigation
   (subword-mode t)
@@ -105,6 +116,12 @@ With argument ARG, do this that many times."
   "Do some things when entering a Lisp mode."
   (company-mode t))
 
+(defun common-term-mode-hook ()
+  "Do some things when a terminal is opened."
+  ;; disable camelCase-aware navigation
+  (subword-mode 0)
+  (linum-mode 0))
+
 (defun delete-word (arg)
   "Delete characters forward until encountering the end of a word.
 With argument ARG, do this that many times."
@@ -114,11 +131,10 @@ With argument ARG, do this that many times."
 (defun lint-fix-js ()
   "Run eslint --fix on current buffer."
   (if (executable-find "eslint_d")
-      ;; progn to do things in guaranteed order
       (progn
-        (if (eq 0 (call-process "eslint_d" nil "*ESLint Errors*" nil "--fix" buffer-file-name))
-            (revert-buffer t t t)
-          (message "eslint_d couldn't --fix due to errors")))
+        (call-process "eslint_d" nil "*ESLint Errors*" nil "--fix" buffer-file-name)
+        (revert-buffer t t t)
+        (flycheck-buffer))
     (message "eslint_d not found")))
 
 (defun fci-conditional-enable (&rest _)
@@ -203,26 +219,24 @@ With argument ARG, do this that many times."
           (lambda ()
             ;; enable help tooltips for code-completion popup (when enabled)
             (company-quickhelp-mode 1)))
-;; run the appropriate type-specific hook after turning on web-mode for a given buffer:
-(add-hook 'web-mode-hook
-          (lambda ()
-            (let ((buffer-type (file-name-extension (buffer-file-name))))
-              (cond ((string-match-p "js[x]?\\'" buffer-type)
-                     (common-javascript-mode-hook))
-                    ((string-match-p "json\\'" buffer-type)
-                     (common-json-mode-hook))))))
 ;; do some things when entering lisp modes
 (add-hook 'lisp-mode-hook 'common-lisp-mode-hook)
 (add-hook 'emacs-lisp-mode-hook 'common-lisp-mode-hook)
+;; do some things after entering JSON mode
+(add-hook 'json-mode-hook 'common-json-mode-hook)
+;; do some things after entering scss mode
+(add-hook 'scss-mode-hook 'common-css-mode-hook)
+;; do some things after entering web-mode
+(add-hook 'web-mode-hook 'common-javascript-mode-hook)
 
 ;; turn on web-mode for every file ending in '.js' or '.jsx':
 (add-to-list 'auto-mode-alist '("\\.js[x]?\\'" . web-mode))
-;; turn on web-mode for every file ending in '.json':
-(add-to-list 'auto-mode-alist '("\\.json\\'" . web-mode))
-;; turn on css-mode for every file ending in '.css' or '.scss':
-(add-to-list 'auto-mode-alist '("\\.[s]?css\\'" . css-mode))
-;; turn on css-mode for every file ending in '.less':
-(add-to-list 'auto-mode-alist '("\\.less\\'" . css-mode))
+;; turn on json-mode for every file ending in '.json':
+(add-to-list 'auto-mode-alist '("\\.json\\'" . json-mode))
+;; turn on scss-mode for every file ending in '.css' or '.scss':
+(add-to-list 'auto-mode-alist '("\\.[s]?css\\'" . scss-mode))
+;; turn on scss-mode for every file ending in '.less':
+(add-to-list 'auto-mode-alist '("\\.less\\'" . scss-mode))
 ;; turn on web-mode for every file ending in '.hbs':
 (add-to-list 'auto-mode-alist '("\\.hbs\\'" . web-mode))
 ;; turn on markdown-mode for every file ending in '.md':
@@ -245,6 +259,7 @@ With argument ARG, do this that many times."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(auto-window-vscroll nil t)
  '(company-backends
    '(company-capf company-css company-files company-tern company-web))
  '(company-files-exclusions
@@ -270,7 +285,7 @@ With argument ARG, do this that many times."
    '(magit nlinum fill-column-indicator import-js sass-mode powerline company-web string-inflection idle-highlight-mode coverlay json-mode markdown-mode web-mode company-quickhelp company-tern flycheck tern-context-coloring scss-mode))
  '(scroll-bar-mode nil)
  '(sgml-basic-offset 4)
- '(tool-bar-mode nil)
+ '(term-mode-hook (function common-term-mode-hook))
  '(visual-bell t)
  '(web-mode-enable-auto-quoting nil))
 (custom-set-faces
@@ -324,8 +339,6 @@ With argument ARG, do this that many times."
 
 ;; turn on some syntax checkers
 (flycheck-add-mode 'javascript-eslint 'web-mode)
-(flycheck-add-mode 'json-jsonlint 'web-mode)
-(flycheck-add-mode 'scss-stylelint 'web-mode)
 
 (flycheck-define-error-level 'warning
   :severity 1
@@ -359,11 +372,14 @@ With argument ARG, do this that many times."
                   (interactive)
                   (other-window -1)))
 
+(lsp-define-stdio-client
+ lsp-js
+ "javascript"
+ (lambda () default-directory)
+ '("javascript-typescript-stdio"))
+
 (set-face-background 'hl-line "#f8f8f8")
 (set-powerline-theme)
-
-(setq auto-window-vscroll nil
-      window-system-default-frame-alist '((font . "xft:Source Code Pro Light:size=36")))
 
 (provide '.emacs)
 ;;; .emacs ends here
