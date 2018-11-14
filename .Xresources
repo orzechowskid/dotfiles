@@ -1,7 +1,7 @@
 ! 1920x1080x13.3in : 166dpi
 ! 2560x1440x13.3in : 221ppi
 ! 3200x1800x13.3in : 276dpi
-Xft.dpi: 221
+Xft.dpi: 276
 
 ! 3200x1800 works best with font scaling set to 1.5 via gnome-tweak-tool
 
@@ -41,7 +41,7 @@ URxvt*scrollBar: false
 URxvt*scrollWithTtyOutput: false
 URxvt*skipScroll: true
 
-Xcursor.size: 32
+Xcursor.size: 48
 
 Emacs*MenuBar: false
 Emacs*ScrollBar: false
