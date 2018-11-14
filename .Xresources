@@ -5,6 +5,8 @@ Xft.dpi: 221
 
 ! 3200x1800 works best with font scaling set to 1.5 via gnome-tweak-tool
 
+! 3200x1800 works best with font scaling set to 1.5 via gnome-tweak-tool
+
 ! URxvt
 ! normal colors
 ! color0 black
