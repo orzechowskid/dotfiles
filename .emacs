@@ -11,6 +11,7 @@
 ;; enable package-loading from MELPA
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/"))
+(package-refresh-contents t)
 
 ;; code completion
 (require 'company)
@@ -94,7 +95,8 @@ With argument ARG, do this that many times."
   ;; code-coverage
   (unless (string-match-p "test.js[x]?\\'" buffer-file-name)
     ;; turn on coverage mode if not a test file
-    (coverlay-mode t)
+    
+    (coverlay-minor-mode t)
     (unless (bound-and-true-p coverlay--loaded-filepath)
       ;; load the closest coverage file if one hasn't been loaded yet
       (coverlay-watch-file (concat
@@ -109,6 +111,10 @@ With argument ARG, do this that many times."
   (subword-mode t)
   ;; select the appropriate syntax checker
   (flycheck-select-checker 'json-jsonlint))
+
+(defun common-lisp-mode-hook ()
+  "Do some things when entering a Lisp mode."
+  (company-mode t))
 
 (defun common-term-mode-hook ()
   "Do some things when a terminal is opened."
@@ -211,17 +217,17 @@ With argument ARG, do this that many times."
 ;; do some things after initializing the Emacs session:
 (add-hook 'after-init-hook
           (lambda ()
-            ;; show line numbers in every file
-            (global-linum-mode t)
             ;; enable help tooltips for code-completion popup (when enabled)
             (company-quickhelp-mode 1)))
+;; do some things when entering lisp modes
+(add-hook 'lisp-mode-hook 'common-lisp-mode-hook)
+(add-hook 'emacs-lisp-mode-hook 'common-lisp-mode-hook)
 ;; do some things after entering JSON mode
 (add-hook 'json-mode-hook 'common-json-mode-hook)
 ;; do some things after entering scss mode
 (add-hook 'scss-mode-hook 'common-css-mode-hook)
 ;; do some things after entering web-mode
 (add-hook 'web-mode-hook 'common-javascript-mode-hook)
-(add-hook 'web-mode-hook #'lsp-js-enable)
 
 ;; turn on web-mode for every file ending in '.js' or '.jsx':
 (add-to-list 'auto-mode-alist '("\\.js[x]?\\'" . web-mode))
@@ -270,15 +276,13 @@ With argument ARG, do this that many times."
  '(electric-indent-mode nil)
  '(fill-column 80)
  '(flycheck-javascript-eslint-executable "eslint_d")
- '(font-use-system-font t)
  '(frame-title-format '("%f") t)
  '(fringe-mode 20 nil (fringe))
  '(hl-line-mode t t)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
- '(menu-bar-mode nil)
  '(package-selected-packages
-   '(fill-column-indicator import-js sass-mode powerline company-web string-inflection idle-highlight-mode coverlay json-mode markdown-mode web-mode company-quickhelp company-tern flycheck tern-context-coloring scss-mode))
+   '(magit nlinum fill-column-indicator import-js sass-mode powerline company-web string-inflection idle-highlight-mode coverlay json-mode markdown-mode web-mode company-quickhelp company-tern flycheck tern-context-coloring scss-mode))
  '(scroll-bar-mode nil)
  '(sgml-basic-offset 4)
  '(term-mode-hook (function common-term-mode-hook))
@@ -303,7 +307,14 @@ With argument ARG, do this that many times."
  '(powerline-inactive0 ((t (:background "gray98"))))
  '(powerline-inactive1 ((t (:background "gray98"))))
  '(powerline-inactive2 ((t (:background "gray98"))))
- '(web-mode-current-column-highlight-face ((t (:background "#f0f0f0")))))
+ '(web-mode-current-column-highlight-face ((t (:background "#f0f0f0"))))
+ '(web-mode-jsx-depth-1-face ((t nil)))
+ '(web-mode-jsx-depth-2-face ((t nil)))
+ '(web-mode-jsx-depth-3-face ((t nil)))
+ '(web-mode-jsx-depth-4-face ((t nil)))
+ '(web-mode-jsx-depth-5-face ((t nil)))
+ '(web-mode-jsx-depth-6-face ((t nil)))
+ '(web-mode-jsx-depth-7-face ((t nil))))
 
 ;; replace the stock Flycheck double-arrow indicator with a bigger one
 ;; maxmum width is 16px according to emacs docs
@@ -369,17 +380,6 @@ With argument ARG, do this that many times."
 
 (set-face-background 'hl-line "#f8f8f8")
 (set-powerline-theme)
-
-(defun my-company-transformer (candidates)
-  (let ((completion-ignore-case t))
-    (all-completions (company-grab-symbol) candidates)))
-
-(defun my-js-hook nil
-  (make-local-variable 'company-transformers)
-  (push 'my-company-transformer company-transformers))
-
-(add-hook 'web-mode-hook 'my-js-hook t)
-
 
 (provide '.emacs)
 ;;; .emacs ends here
