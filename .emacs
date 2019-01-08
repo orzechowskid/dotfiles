@@ -16,8 +16,7 @@
 ;; code completion
 (require 'company)
 (require 'company-quickhelp) ; tooltip for code-completion popup
-                                        ;(require 'company-web) ; HTML completion
-(require 'company-lsp)
+(require 'company-web-html) ; HTML completion
 ;; inline code coverage indicators
 (require 'coverlay)
 ;; automatic syntax checking
@@ -28,8 +27,8 @@
 (require 'idle-highlight-mode)
 ;; JSON major mode
 (require 'json-mode)
-;; LSP minor mode
-(require 'lsp-javascript-typescript)
+;;; LSP minor mode
+;(require 'lsp-javascript-typescript)
 ;; fun mode-line customization
 (require 'powerline)
 ;; Markdown major mode
@@ -66,50 +65,65 @@ With argument ARG, do this that many times."
   ;; select the appropriate syntax checker
   (flycheck-select-checker 'scss-stylelint))
 
-(defun common-javascript-mode-hook ()
-  "Do some things when entering a javascript mode."
+(defun common-html-mode-hook ()
+  "Do some things when entering an HTML mode."
   ;; enable syntax checking
   (flycheck-mode t)
-  ;; select the appropriate syntax checker
-  (flycheck-select-checker 'javascript-eslint)
-  ;; turn on code-coverage mode
-  (coverlay-minor-mode t)
-  ;; turn on camelCase-aware code navigation
-  (subword-mode t)
+  (flycheck-select-checker 'html-tidy)
   ;; enable code-completion mode
   (company-mode t)
+)
+
+(defun common-javascript-mode-hook ()
+  "Do some things when entering a javascript mode."
+  ;; enable code analysis
+  (tern-mode t)
+
+  ;; enable syntax checking
+  (flycheck-mode t)
+  (flycheck-select-checker 'javascript-eslint)
+
+  ;; turn on camelCase-aware code navigation
+  (subword-mode t)
+
+  ;; enable code-completion mode
+  (company-mode t)
+
   ;; set a vertical rule at column whatever
   (fci-mode t)
+
   ;; tell web-mode to use JSX for frontend JS code
   (when (or (string-match-p ".js[x]?\\'" buffer-file-name)
             (buffer-contains-string "import React") ;; es6+ .js
             (or (buffer-contains-string "define([")
                 (buffer-contains-string "require(["))) ;; requireJS
     (web-mode-set-content-type "jsx"))
+
   ;; auto-indent upon Enter keypress
   (electric-indent-mode t)
+
   ;; enable token highlighting
   (idle-highlight-mode t)
+
   ;; lint upon save
   (add-hook 'after-save-hook 'lint-fix-js t t)
-  ;; code-coverage
+
+  ;; turn on coverage mode if not a test file
   (unless (string-match-p "test.js[x]?\\'" buffer-file-name)
-    ;; turn on coverage mode if not a test file
-    
     (coverlay-minor-mode t)
+
+    ;; load the closest coverage file if one hasn't been loaded yet
     (unless (bound-and-true-p coverlay--loaded-filepath)
-      ;; load the closest coverage file if one hasn't been loaded yet
       (coverlay-watch-file (concat
                             (locate-dominating-file buffer-file-name "coverage")
                             "coverage/lcov.info")))))
 
 (defun common-json-mode-hook ()
   "Do some things when entering a JSON mode."
-  ;; enable syntax checking
-  (flycheck-mode t)
   ;; turn on camelCase-aware code navigation
   (subword-mode t)
-  ;; select the appropriate syntax checker
+  ;; enable syntax checking
+  (flycheck-mode t)
   (flycheck-select-checker 'json-jsonlint))
 
 (defun common-lisp-mode-hook ()
@@ -119,8 +133,13 @@ With argument ARG, do this that many times."
 (defun common-term-mode-hook ()
   "Do some things when a terminal is opened."
   ;; disable camelCase-aware navigation
-  (subword-mode 0)
-  (linum-mode 0))
+  (subword-mode 0))
+
+(defun common-web-mode-hook ()
+  "Do some things when entering web-mode."
+  (if (string-match-p "js[x]?" (file-name-extension (buffer-file-name)))
+      (common-javascript-mode-hook)
+    (common-html-mode-hook)))
 
 (defun delete-word (arg)
   "Delete characters forward until encountering the end of a word.
@@ -227,10 +246,12 @@ With argument ARG, do this that many times."
 ;; do some things after entering scss mode
 (add-hook 'scss-mode-hook 'common-css-mode-hook)
 ;; do some things after entering web-mode
-(add-hook 'web-mode-hook 'common-javascript-mode-hook)
+(add-hook 'web-mode-hook 'common-web-mode-hook)
 
 ;; turn on web-mode for every file ending in '.js' or '.jsx':
 (add-to-list 'auto-mode-alist '("\\.js[x]?\\'" . web-mode))
+;; turn on web-mode for every file ending in '.html':
+(add-to-list 'auto-mode-alist '("\\.html\\'" . web-mode))
 ;; turn on json-mode for every file ending in '.json':
 (add-to-list 'auto-mode-alist '("\\.json\\'" . json-mode))
 ;; turn on scss-mode for every file ending in '.css' or '.scss':
@@ -248,7 +269,7 @@ With argument ARG, do this that many times."
 (add-to-list 'web-mode-indentation-params '("lineup-ternary" . nil))
 
 ;; disable fci-mode while certain operations are in progress
-(advice-add 'web-mode-on-after-change :around #'fci-hack)
+;(advice-add 'web-mode-on-after-change :around #'fci-hack)
 (advice-add 'web-mode-on-post-command :around #'fci-hack)
 (add-hook 'company-completion-started-hook 'fci-get-and-disable)
 (add-hook 'company-completion-cancelled-hook 'fci-conditional-enable)
@@ -261,7 +282,7 @@ With argument ARG, do this that many times."
  ;; If there is more than one, they won't work right.
  '(auto-window-vscroll nil t)
  '(company-backends
-   '(company-capf company-css company-files company-tern company-web))
+   '(company-capf company-css company-files company-tern company-web-html))
  '(company-files-exclusions
    '(".o" "~" "#" ".bin" ".lbin" ".so" ".a" ".ln" ".blg" ".bbl" ".elc" ".lof" ".glo" ".idx" ".lot" ".svn/" ".hg/" ".git/" ".bzr/" "CVS/" "_darcs/" "_MTN/"))
  '(company-minimum-prefix-length 1)
@@ -270,11 +291,12 @@ With argument ARG, do this that many times."
  '(coverlay:mark-tested-lines nil)
  '(coverlay:untested-line-background-color "#ffe8e8")
  '(css-indent-offset 4)
- '(css-mode-hook 'common-css-mode-hook)
+ '(css-mode-hook 'common-css-mode-hook t)
  '(cua-mode t nil (cua-base))
  '(cursor-type 'bar)
  '(electric-indent-mode nil)
  '(fill-column 80)
+ '(flycheck-html-tidy-executable "clean-html")
  '(flycheck-javascript-eslint-executable "eslint_d")
  '(frame-title-format '("%f") t)
  '(fringe-mode 20 nil (fringe))
@@ -282,10 +304,10 @@ With argument ARG, do this that many times."
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
  '(package-selected-packages
-   '(magit nlinum fill-column-indicator import-js sass-mode powerline company-web string-inflection idle-highlight-mode coverlay json-mode markdown-mode web-mode company-quickhelp company-tern flycheck tern-context-coloring scss-mode))
+   '(eglot magit fill-column-indicator import-js sass-mode powerline company-web string-inflection idle-highlight-mode coverlay json-mode markdown-mode web-mode company-quickhelp company-tern flycheck tern-context-coloring scss-mode))
  '(scroll-bar-mode nil)
  '(sgml-basic-offset 4)
- '(term-mode-hook (function common-term-mode-hook))
+ '(term-mode-hook #'common-term-mode-hook)
  '(visual-bell t)
  '(web-mode-enable-auto-quoting nil))
 (custom-set-faces
@@ -300,7 +322,6 @@ With argument ARG, do this that many times."
  '(company-tooltip-common-selection ((t (:inherit company-tooltip-annotation-selection))))
  '(company-tooltip-selection ((t (:background "steel blue" :foreground "white"))))
  '(fringe ((t (:background "grey98"))))
- '(linum ((t (:background "gray98" :foreground "dim gray"))))
  '(powerline-active0 ((t (:background "tomato" :foreground "white" :weight bold))))
  '(powerline-active1 ((t (:background "gray95"))))
  '(powerline-active2 ((t (:background "gray95"))))
@@ -339,6 +360,7 @@ With argument ARG, do this that many times."
 
 ;; turn on some syntax checkers
 (flycheck-add-mode 'javascript-eslint 'web-mode)
+(flycheck-add-mode 'html-tidy 'web-mode)
 
 (flycheck-define-error-level 'warning
   :severity 1
@@ -352,6 +374,7 @@ With argument ARG, do this that many times."
   :fringe-face 'flycheck-fringe-error)
 
 (global-hl-line-mode t)
+(global-display-line-numbers-mode t)
 
 ;; Ctrl-Backspace -> delete a word instead of killing it
 (global-set-key [C-backspace] 'backward-delete-word)
@@ -371,12 +394,6 @@ With argument ARG, do this that many times."
                 (lambda ()
                   (interactive)
                   (other-window -1)))
-
-(lsp-define-stdio-client
- lsp-js
- "javascript"
- (lambda () default-directory)
- '("javascript-typescript-stdio"))
 
 (set-face-background 'hl-line "#f8f8f8")
 (set-powerline-theme)
