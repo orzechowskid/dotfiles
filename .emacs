@@ -13,23 +13,23 @@
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/"))
 (package-refresh-contents t)
 
+;; code analysis
+(load-file "~/.emacs.d/lisp/eglot.el")
+(require 'eglot)
+(add-to-list 'eglot-server-programs '(web-mode . ("javascript-typescript-stdio")))
+
 ;; code completion
 (require 'company)
+(require 'company-web-html)
 (require 'company-quickhelp) ; tooltip for code-completion popup
-                                        ;(require 'company-web) ; HTML completion
-(require 'company-lsp)
 ;; inline code coverage indicators
 (require 'coverlay)
-;; automatic syntax checking
+;; linting
 (require 'flycheck)
-;; draw a margin at column whatever
-(require 'fill-column-indicator)
 ;; highlight current token
 (require 'idle-highlight-mode)
 ;; JSON major mode
 (require 'json-mode)
-;; LSP minor mode
-(require 'lsp-javascript-typescript)
 ;; fun mode-line customization
 (require 'powerline)
 ;; Markdown major mode
@@ -39,8 +39,10 @@
 ;; web-development major mode
 (require 'web-mode)
 
-(defvar-local my-fci-mode-stack '()
-  "track fci-mode state to aid advice functions.")
+(defun my-company-transformer (candidates)
+  "Do something with CANDIDATES, not sure what."
+  (let ((completion-ignore-case t))
+    (all-completions (company-grab-symbol) candidates)))
 
 (defun backward-delete-word (arg)
   "Delete characters backward until encountering the beginning of a word.
@@ -48,7 +50,7 @@ With argument ARG, do this that many times."
   (interactive "p")
   (delete-word (- arg)))
 
-(defun buffer-contains-string (string)
+(defun buffer-contains-string-near-top (string)
   "Search the top of the current buffer for STRING."
   (save-excursion
     (save-match-data
@@ -57,39 +59,39 @@ With argument ARG, do this that many times."
 
 (defun common-css-mode-hook ()
   "Do some things when entering a CSS mode."
-  ;; enable syntax checking
-  (flycheck-mode t)
   ;; enable code-completion mode
   (company-mode t)
+  ;; documentation in minibuffer
+  (eldoc-mode t)
+  ;; linting
+  (flycheck-mode t)
+  ;; disable the bad scss linter
+  (add-to-list 'flycheck-disabled-checkers 'scss-lint)
   ;; turn on camelCase-aware code navigation
-  (subword-mode t)
-  ;; select the appropriate syntax checker
-  (flycheck-select-checker 'scss-stylelint))
+  (subword-mode t))
 
 (defun common-javascript-mode-hook ()
   "Do some things when entering a javascript mode."
-  ;; enable syntax checking
-  (flycheck-mode t)
-  ;; select the appropriate syntax checker
-  (flycheck-select-checker 'javascript-eslint)
   ;; turn on code-coverage mode
   (coverlay-minor-mode t)
+  ;; hook up to LSP server
+  (eglot-ensure)
+  ;; documentation in minibuffer
+  (eldoc-mode t)
   ;; turn on camelCase-aware code navigation
   (subword-mode t)
   ;; enable code-completion mode
   (company-mode t)
-  ;; set a vertical rule at column whatever
-  (fci-mode t)
   ;; tell web-mode to use JSX for frontend JS code
   (when (or (string-match-p ".js[x]?\\'" buffer-file-name)
-            (buffer-contains-string "import React") ;; es6+ .js
-            (or (buffer-contains-string "define([")
-                (buffer-contains-string "require(["))) ;; requireJS
+            (buffer-contains-string-near-top "import React") ;; es6+ .js
+            (or (buffer-contains-string-near-top "define([")
+                (buffer-contains-string-near-top "require(["))) ;; requireJS
     (web-mode-set-content-type "jsx"))
   ;; auto-indent upon Enter keypress
   (electric-indent-mode t)
-  ;; enable token highlighting
-  (idle-highlight-mode t)
+  ;; linting
+  (flycheck-mode t)
   ;; lint upon save
   (add-hook 'after-save-hook 'lint-fix-js t t)
   ;; code-coverage
@@ -105,22 +107,21 @@ With argument ARG, do this that many times."
 
 (defun common-json-mode-hook ()
   "Do some things when entering a JSON mode."
-  ;; enable syntax checking
-  (flycheck-mode t)
   ;; turn on camelCase-aware code navigation
   (subword-mode t)
-  ;; select the appropriate syntax checker
-  (flycheck-select-checker 'json-jsonlint))
+  (make-local-variable 'js-indent-level)
+  (setq js-indent-level 2))
 
 (defun common-lisp-mode-hook ()
   "Do some things when entering a Lisp mode."
+  (eldoc-mode t)
+  (flycheck-mode t)
   (company-mode t))
 
 (defun common-term-mode-hook ()
   "Do some things when a terminal is opened."
   ;; disable camelCase-aware navigation
-  (subword-mode 0)
-  (linum-mode 0))
+  (subword-mode 0))
 
 (defun delete-word (arg)
   "Delete characters forward until encountering the end of a word.
@@ -129,33 +130,13 @@ With argument ARG, do this that many times."
   (delete-region (point) (progn (forward-word arg) (point))))
 
 (defun lint-fix-js ()
-  "Run eslint --fix on current buffer."
+  "Run 'eslint --fix' on current buffer."
   (if (executable-find "eslint_d")
       (progn
         (call-process "eslint_d" nil "*ESLint Errors*" nil "--fix" buffer-file-name)
         (revert-buffer t t t)
         (flycheck-buffer))
     (message "eslint_d not found")))
-
-(defun fci-conditional-enable (&rest _)
-  "Conditionally (re-)enable fci-mode."
-  (when (eq (pop my-fci-mode-stack) t)
-    (fci-mode t)))
-
-(defun fci-get-and-disable (&rest _)
-  "Store current status of fci-mode, and disable if needed."
-  (when (boundp 'fci-mode)
-    (push fci-mode my-fci-mode-stack)
-    (when fci-mode
-      ;; turns out nil actually enables fci-mode, not disables it :|
-      (fci-mode -1))))
-
-(defun fci-hack (advised-func &rest args)
-  "Disable fci-mode, call ADVISED-FUNC with ARGS, then re-enable fci-mode."
-  (progn
-    (fci-get-and-disable)
-    (apply advised-func args)
-    (fci-conditional-enable)))
 
 (defun set-powerline-theme ()
   "Powerline customization."
@@ -202,6 +183,7 @@ With argument ARG, do this that many times."
              (powerline-raw " " face1)
              (funcall separator-left face1 face2)
              (powerline-vc face2 'r)
+             (powerline-raw "%l:%c" face1 'r);
              ))
 
            (rhs
@@ -214,109 +196,55 @@ With argument ARG, do this that many times."
                          (powerline-width rhs))
          (powerline-render rhs)))))))
 
-;; do some things after initializing the Emacs session:
-(add-hook 'after-init-hook
-          (lambda ()
-            ;; enable help tooltips for code-completion popup (when enabled)
-            (company-quickhelp-mode 1)))
+;; turn on company quickhelp for all buffers
+(add-hook 'after-init-hook 'company-quickhelp-mode)
+
+;; disable flymake - we like flycheck
+(add-hook 'eglot--managed-mode-hook (lambda () (flymake-mode -1)))
+
 ;; do some things when entering lisp modes
-(add-hook 'lisp-mode-hook 'common-lisp-mode-hook)
 (add-hook 'emacs-lisp-mode-hook 'common-lisp-mode-hook)
+(add-hook 'lisp-mode-hook 'common-lisp-mode-hook)
+
 ;; do some things after entering JSON mode
 (add-hook 'json-mode-hook 'common-json-mode-hook)
-;; do some things after entering scss mode
+
+;; do some things after entering css modes
 (add-hook 'scss-mode-hook 'common-css-mode-hook)
+
 ;; do some things after entering web-mode
 (add-hook 'web-mode-hook 'common-javascript-mode-hook)
 
+;; do some things after launching a terminal
+(add-hook 'term-mode-hook
+          (lambda ()
+            (hl-line-mode 0)))
+
 ;; turn on web-mode for every file ending in '.js' or '.jsx':
 (add-to-list 'auto-mode-alist '("\\.js[x]?\\'" . web-mode))
+
 ;; turn on json-mode for every file ending in '.json':
 (add-to-list 'auto-mode-alist '("\\.json\\'" . json-mode))
+
 ;; turn on scss-mode for every file ending in '.css' or '.scss':
 (add-to-list 'auto-mode-alist '("\\.[s]?css\\'" . scss-mode))
+
 ;; turn on scss-mode for every file ending in '.less':
 (add-to-list 'auto-mode-alist '("\\.less\\'" . scss-mode))
+
 ;; turn on web-mode for every file ending in '.hbs':
 (add-to-list 'auto-mode-alist '("\\.hbs\\'" . web-mode))
+
 ;; turn on markdown-mode for every file ending in '.md':
 (add-to-list 'auto-mode-alist '("\\.md\\'" . markdown-mode))
+
 ;; set up some indent-related nonsense for web-mode
 (add-to-list 'web-mode-indentation-params '("lineup-args" . nil))
 (add-to-list 'web-mode-indentation-params '("lineup-calls" . nil))
 (add-to-list 'web-mode-indentation-params '("lineup-concats" . nil))
 (add-to-list 'web-mode-indentation-params '("lineup-ternary" . nil))
 
-;; disable fci-mode while certain operations are in progress
-(advice-add 'web-mode-on-after-change :around #'fci-hack)
-(advice-add 'web-mode-on-post-command :around #'fci-hack)
-(add-hook 'company-completion-started-hook 'fci-get-and-disable)
-(add-hook 'company-completion-cancelled-hook 'fci-conditional-enable)
-(add-hook 'company-completion-finished-hook 'fci-conditional-enable)
-
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(auto-window-vscroll nil t)
- '(company-backends
-   '(company-capf company-css company-files company-tern company-web))
- '(company-files-exclusions
-   '(".o" "~" "#" ".bin" ".lbin" ".so" ".a" ".ln" ".blg" ".bbl" ".elc" ".lof" ".glo" ".idx" ".lot" ".svn/" ".hg/" ".git/" ".bzr/" "CVS/" "_darcs/" "_MTN/"))
- '(company-minimum-prefix-length 1)
- '(company-quickhelp-delay 0.25)
- '(company-tooltip-align-annotations t)
- '(coverlay:mark-tested-lines nil)
- '(coverlay:untested-line-background-color "#ffe8e8")
- '(css-indent-offset 4)
- '(css-mode-hook 'common-css-mode-hook)
- '(cua-mode t nil (cua-base))
- '(cursor-type 'bar)
- '(electric-indent-mode nil)
- '(fill-column 80)
- '(flycheck-javascript-eslint-executable "eslint_d")
- '(frame-title-format '("%f") t)
- '(fringe-mode 20 nil (fringe))
- '(hl-line-mode t t)
- '(indent-tabs-mode nil)
- '(inhibit-startup-screen t)
- '(package-selected-packages
-   '(magit nlinum fill-column-indicator import-js sass-mode powerline company-web string-inflection idle-highlight-mode coverlay json-mode markdown-mode web-mode company-quickhelp company-tern flycheck tern-context-coloring scss-mode))
- '(scroll-bar-mode nil)
- '(sgml-basic-offset 4)
- '(term-mode-hook (function common-term-mode-hook))
- '(visual-bell t)
- '(web-mode-enable-auto-quoting nil))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(company-scrollbar-bg ((t (:background "white"))))
- '(company-scrollbar-fg ((t (:background "darkgray"))))
- '(company-tooltip-annotation ((t (:inherit company-tooltip))))
- '(company-tooltip-annotation-selection ((t (:inherit company-tooltip-selection))))
- '(company-tooltip-common-selection ((t (:inherit company-tooltip-annotation-selection))))
- '(company-tooltip-selection ((t (:background "steel blue" :foreground "white"))))
- '(fringe ((t (:background "grey98"))))
- '(linum ((t (:background "gray98" :foreground "dim gray"))))
- '(powerline-active0 ((t (:background "tomato" :foreground "white" :weight bold))))
- '(powerline-active1 ((t (:background "gray95"))))
- '(powerline-active2 ((t (:background "gray95"))))
- '(powerline-inactive0 ((t (:background "gray98"))))
- '(powerline-inactive1 ((t (:background "gray98"))))
- '(powerline-inactive2 ((t (:background "gray98"))))
- '(web-mode-current-column-highlight-face ((t (:background "#f0f0f0"))))
- '(web-mode-jsx-depth-1-face ((t nil)))
- '(web-mode-jsx-depth-2-face ((t nil)))
- '(web-mode-jsx-depth-3-face ((t nil)))
- '(web-mode-jsx-depth-4-face ((t nil)))
- '(web-mode-jsx-depth-5-face ((t nil)))
- '(web-mode-jsx-depth-6-face ((t nil)))
- '(web-mode-jsx-depth-7-face ((t nil))))
-
-;; replace the stock Flycheck double-arrow indicator with a bigger one
+;; replace the stock Flycheck warning/error indicators with a bigger one for hidpi
 ;; maxmum width is 16px according to emacs docs
 (define-fringe-bitmap 'flycheck-big-indicator
   (vector #b0000000000000000
@@ -337,7 +265,69 @@ With argument ARG, do this that many times."
           #b0000000000000000)
   16 16 'center)
 
-;; turn on some syntax checkers
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(auto-window-vscroll nil t)
+ '(company-backends '(company-capf company-css company-files))
+ '(company-files-exclusions
+   '(".o" "~" "#" ".bin" ".lbin" ".so" ".a" ".ln" ".blg" ".bbl" ".elc" ".lof" ".glo" ".idx" ".lot" ".svn/" ".hg/" ".git/" ".bzr/" "CVS/" "_darcs/" "_MTN/"))
+ '(company-minimum-prefix-length 1)
+ '(company-quickhelp-delay 0.25)
+ '(company-tooltip-align-annotations t)
+ '(coverlay:mark-tested-lines nil)
+ '(coverlay:untested-line-background-color "#ffe8e8")
+ '(css-indent-offset 4)
+ '(css-mode-hook 'common-css-mode-hook t)
+ '(cua-mode t nil (cua-base))
+ '(cursor-type 'bar)
+ '(electric-indent-mode nil)
+ '(fill-column 80)
+ '(flycheck-disabled-checkers (scss-lint))
+ '(flycheck-javascript-eslint-executable "eslint_d")
+ '(flycheck-scss-lint-executable "stylelint")
+ '(frame-title-format '("%f") t)
+ '(fringe-mode 20 nil (fringe))
+ '(indent-tabs-mode nil)
+ '(inhibit-startup-screen t)
+ '(package-selected-packages
+   '(multi-term hl-fill-column flycheck flymake-cursor magit nlinum import-js sass-mode powerline company-web string-inflection idle-highlight-mode coverlay json-mode markdown-mode web-mode company-quickhelp company-tern tern-context-coloring scss-mode))
+ '(scroll-bar-mode nil)
+ '(sgml-basic-offset 4)
+ '(term-mode-hook #'common-term-mode-hook)
+ '(visual-bell t)
+ '(web-mode-enable-auto-quoting nil))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(company-scrollbar-bg ((t (:background "white"))))
+ '(company-scrollbar-fg ((t (:background "darkgray"))))
+ '(company-tooltip-annotation ((t (:inherit company-tooltip))))
+ '(company-tooltip-annotation-selection ((t (:inherit company-tooltip-selection))))
+ '(company-tooltip-common-selection ((t (:inherit company-tooltip-annotation-selection))))
+ '(company-tooltip-selection ((t (:background "steel blue" :foreground "white"))))
+ '(fringe ((t (:background "grey98"))))
+ '(powerline-active0 ((t (:background "tomato" :foreground "white" :weight bold))))
+ '(powerline-active1 ((t (:background "gray95"))))
+ '(powerline-active2 ((t (:background "gray95"))))
+ '(powerline-inactive0 ((t (:background "gray98"))))
+ '(powerline-inactive1 ((t (:background "gray98"))))
+ '(powerline-inactive2 ((t (:background "gray98"))))
+ '(reb-match-0 ((t (:background "misty rose"))))
+ '(web-mode-current-column-highlight-face ((t (:background "#f0f0f0"))))
+ '(web-mode-jsx-depth-1-face ((t nil)))
+ '(web-mode-jsx-depth-2-face ((t nil)))
+ '(web-mode-jsx-depth-3-face ((t nil)))
+ '(web-mode-jsx-depth-4-face ((t nil)))
+ '(web-mode-jsx-depth-5-face ((t nil)))
+ '(web-mode-jsx-depth-6-face ((t nil)))
+ '(web-mode-jsx-depth-7-face ((t nil))))
+
+;; turn on some syntax checkers for some major modes
 (flycheck-add-mode 'javascript-eslint 'web-mode)
 
 (flycheck-define-error-level 'warning
@@ -350,6 +340,8 @@ With argument ARG, do this that many times."
   :overlay-category 'flycheck-error-overlay
   :fringe-bitmap 'flycheck-big-indicator
   :fringe-face 'flycheck-fringe-error)
+
+(global-eldoc-mode -1)
 
 (global-hl-line-mode t)
 
@@ -371,12 +363,8 @@ With argument ARG, do this that many times."
                 (lambda ()
                   (interactive)
                   (other-window -1)))
-
-(lsp-define-stdio-client
- lsp-js
- "javascript"
- (lambda () default-directory)
- '("javascript-typescript-stdio"))
+;; Ctrl-a -> select entire file
+(global-set-key [C-a] 'mark-whole-buffer)
 
 (set-face-background 'hl-line "#f8f8f8")
 (set-powerline-theme)
