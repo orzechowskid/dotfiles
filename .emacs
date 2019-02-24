@@ -293,10 +293,10 @@ With argument ARG, do this that many times."
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
  '(package-selected-packages
-   '(multi-term hl-fill-column flycheck flymake-cursor magit nlinum import-js sass-mode powerline company-web string-inflection idle-highlight-mode coverlay json-mode markdown-mode web-mode company-quickhelp company-tern tern-context-coloring scss-mode))
+   '(company eglot multi-term hl-fill-column flycheck flymake-cursor magit nlinum import-js sass-mode powerline company-web string-inflection idle-highlight-mode coverlay json-mode markdown-mode web-mode company-quickhelp company-tern tern-context-coloring scss-mode))
  '(scroll-bar-mode nil)
  '(sgml-basic-offset 4)
- '(term-mode-hook #'common-term-mode-hook)
+ '(term-mode-hook #'common-term-mode-hook t)
  '(visual-bell t)
  '(web-mode-enable-auto-quoting nil))
 (custom-set-faces
