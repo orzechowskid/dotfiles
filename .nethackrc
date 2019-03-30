@@ -11,6 +11,7 @@ OPTIONS=hilite_status:hunger/always/yellow
 OPTIONS=hilite_status:condition/all/orange
 OPTIONS=hitpointbar
 OPTIONS=menucolors
+OPTIONS=pettype:cat
 OPTIONS=pickup_types:$
 OPTIONS=statushilites=5
 OPTIONS=symset:IBMgraphics

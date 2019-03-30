@@ -46,4 +46,4 @@ Xcursor.size: 48
 Emacs*MenuBar: false
 Emacs*ScrollBar: false
 Emacs*ToolBar: false
-Emacs*font: Source Code Pro Light-16
+Emacs*font: xft:-ADBO-Source Code Pro-light-normal-normal-*-30-*-*-*-m-0-iso10646-1
