@@ -6,7 +6,6 @@
 (prefer-coding-system 'utf-8)
 (set-language-environment "UTF-8")
 
-
 ;;;
 ;;; packages
 ;;;
@@ -25,7 +24,7 @@
 
 ;; code completion
 (require 'company)
-(require 'company-quickhelp) ; tooltip for code-completion popup
+(require 'company-quickhelp) ; documentation tooltips for code-completion popup
 (require 'company-web-html) ; not an ELPA package, but rather provided by company
 ;; mode line cleaner-upper
 (require 'delight)
@@ -103,6 +102,7 @@ With argument ARG, do this that many times."
   (subword-mode t)
   ;; enable code-completion mode
   (company-mode t)
+  (company-quickhelp-mode t)
   ;; hook up to LSP server
   ;; tell eglot to ignore its own Flymake backend (which doesn't seem to do anything)
   (add-hook 'eglot--managed-mode-hook
@@ -127,6 +127,7 @@ With argument ARG, do this that many times."
   "Do some things when entering a Lisp mode."
   ;; enable code-completion mode
   (company-mode t)
+  (company-quickhelp-mode t)
   ;; enable documentation in echo area
   (eldoc-mode t)
   ;; linter
@@ -183,6 +184,9 @@ With argument ARG, do this that many times."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(auto-dim-other-buffers-mode t)
+ '(company-quickhelp-color-background nil)
+ '(company-quickhelp-color-foreground nil)
+ '(company-tooltip-align-annotations t)
  '(coverlay:mark-tested-lines nil)
  '(coverlay:untested-line-background-color "#ffe8e8")
  '(cua-mode t nil (cua-base))
@@ -302,6 +306,11 @@ With argument ARG, do this that many times."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(auto-dim-other-buffers-face ((t (:background "#f8f8f8" :foreground "#808080"))))
+ '(company-scrollbar-bg ((t (:background "gray95"))))
+ '(company-scrollbar-fg ((t (:background "tomato"))))
+ '(company-tooltip-annotation ((t (:foreground "firebrick4"))))
+ '(company-tooltip-common ((t (:foreground "black"))))
+ '(company-tooltip-selection ((t (:background "steel blue" :foreground "white"))))
  '(flymake-warning ((t (:underline (:color "dark orange" :style wave)))))
  '(js2-error ((t nil)))
  '(js2-warning ((t nil)))
