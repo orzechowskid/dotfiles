@@ -2,6 +2,7 @@
 ;;; Commentary:
 ;;; Code:
 
+
 (prefer-coding-system 'utf-8)
 (set-language-environment "UTF-8")
 
@@ -41,9 +42,6 @@
 (autoload 'scss-mode "scss-mode"
   "Use the scss-mode package to provide 'scss-mode on-demand."
   t)
-;(autoload 'web-mode "web-mode"
-;  "Use the web-mode package to provide 'web-mode on-demand."
-;  t)
 
 
 ;;; utility functions and advices
@@ -60,7 +58,6 @@ With argument ARG, do this that many times."
 With argument ARG, do this that many times."
   (interactive "p")
   (delete-region (point) (progn (forward-word arg) (point))))
-
 
 ;; prefer contents of help-at-point (e.g., Flymake) over whatever eldoc outputs
 (advice-add 'eldoc-message :around
@@ -87,7 +84,7 @@ With argument ARG, do this that many times."
   (help-at-pt-set-timer)
   (setq-local help-at-pt-display-when-idle t))
 
-(defun common-javascript-mode-hook ()
+(defun my-javascript-mode-hook ()
   "Do some things when opening JavaScript files."
   ;; enable code-completion
   (company-mode t)
@@ -95,17 +92,15 @@ With argument ARG, do this that many times."
   (eldoc-mode t)
   ;; enable camelCase-aware code navigation
   (subword-mode t)
-  ;; connect to a language server
+  ;; use eglot to connect to a language server
   (add-hook 'eglot--managed-mode-hook
             (lambda ()
-              ;; eglot's built-in Flymake backend doesn't work
+              ;; eglot's built-in Flymake backend is junk for JS
               (remove-hook 'flymake-diagnostic-functions 'eglot-flymake-backend t)
               ;; add our own
               (flymake-eslint-enable))
             nil t)
   (eglot-ensure)
-  ;; linting
-  (flymake-eslint-enable)
   ;; turn on inline test coverage if not a test file
   (unless (string-match-p "test.js[x]?\\'" buffer-file-name)
     (coverlay-minor-mode t)
@@ -133,7 +128,7 @@ With argument ARG, do this that many times."
 
 (add-hook 'scss-mode-hook 'my-css-mode-hook)
 (add-hook 'emacs-lisp-mode-hook 'my-lisp-mode-hook)
-(add-hook 'rjsx-mode-hook 'common-javascript-mode-hook)
+(add-hook 'rjsx-mode-hook 'my-javascript-mode-hook)
 (add-hook 'json-mode-hook 'my-json-mode-hook)
 (add-hook 'lisp-mode-hook 'my-lisp-mode-hook)
 (add-hook 'term-mode-hook 'my-terminal-mode-hook)
@@ -146,7 +141,12 @@ With argument ARG, do this that many times."
 (push '("\\.less\\'" . scss-mode) auto-mode-alist)
 (push '("\\.md\\'" . markdown-mode) auto-mode-alist)
 
+;; associate some major modes with language server binaries
 (push '(rjsx-mode . ("javascript-typescript-stdio")) eglot-server-programs)
+
+
+;;; variables and faces
+
 
 ;; replace the stock Flymake warning/error indicators with a bigger one for hidpi
 ;; maxmum width is 16px according to emacs docs
@@ -169,10 +169,6 @@ With argument ARG, do this that many times."
           #b0000000000000000)
   16 16 'center)
 
-
-;;; variables and faces
-
-
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -194,11 +190,95 @@ With argument ARG, do this that many times."
  '(inhibit-startup-screen t)
  '(js-switch-indent-offset 2)
  '(js2-highlight-external-variables nil)
+ '(mode-line-format
+   '("%e"
+     (:eval
+      (let*
+          ((active
+            (powerline-selected-window-active))
+           (mode-line-buffer-id
+            (if active 'mode-line-buffer-id 'mode-line-buffer-id-inactive))
+           (mode-line
+            (if active 'mode-line 'mode-line-inactive))
+           (face0
+            (if active 'powerline-active0 'powerline-inactive0))
+           (face1
+            (if active 'powerline-active1 'powerline-inactive1))
+           (face2
+            (if active 'powerline-active2 'powerline-inactive2))
+           (separator-left
+            (intern
+             (format "powerline-%s-%s"
+                     (powerline-current-separator)
+                     (car powerline-default-separator-dir))))
+           (separator-right
+            (intern
+             (format "powerline-%s-%s"
+                     (powerline-current-separator)
+                     (cdr powerline-default-separator-dir))))
+           (lhs
+            (list
+             (powerline-raw "%*" face0 'l)
+             (when powerline-display-buffer-size
+               (powerline-buffer-size face0 'l))
+             (when powerline-display-mule-info
+               (powerline-raw mode-line-mule-info face0 'l))
+             (powerline-buffer-id
+              `(mode-line-buffer-id ,face0)
+              'l)
+             (when
+                 (and
+                  (boundp 'which-func-mode)
+                  which-func-mode)
+               (powerline-raw which-func-format face0 'l))
+             (powerline-raw " " face0)
+             (funcall separator-left face0 face1)
+             (when
+                 (and
+                  (boundp 'erc-track-minor-mode)
+                  erc-track-minor-mode)
+               (powerline-raw erc-modified-channels-object face1 'l))
+             (powerline-major-mode face1 'l)
+             (powerline-process face1)
+             (powerline-minor-modes face1 'l)
+             (powerline-narrow face1 'l)
+             (powerline-raw " " face1)
+             (funcall separator-left face1 face2)
+             (powerline-vc face2 'r)
+             (when
+                 (bound-and-true-p nyan-mode)
+               (powerline-raw
+                (list
+                 (nyan-create))
+                face2 'l))))
+           (rhs
+            (list
+             (powerline-raw global-mode-string face2 'r)
+             (funcall separator-right face2 face1)
+             (unless window-system
+               (powerline-raw
+                (char-to-string 57505)
+                face1 'l))
+             (powerline-raw "%4l" face1 'l)
+             (powerline-raw ":" face1 'l)
+             (powerline-raw "%3c" face1 'r)
+             (funcall separator-right face1 face0)
+             (powerline-raw " " face0)
+             (when powerline-display-hud
+               (powerline-hud face0 face2))
+             (powerline-fill face0 0))))
+        (concat
+         (powerline-render lhs)
+         (powerline-fill face2
+                         (powerline-width rhs))
+         (powerline-render rhs))))))
+ '(mode-line-percent-position nil)
  '(package-selected-packages
    '(flymake-eslint origami powerline company package-lint package-lint-flymake treepy request smart-jump rjsx-mode web-mode-edit-element web-mode scss-mode multi-term markdown-mode json-mode eglot coverlay company-web company-quickhelp))
  '(powerline-display-buffer-size nil)
  '(powerline-display-hud nil)
  '(powerline-display-mule-info nil)
+ '(powerline-gui-use-vcs-glyph t)
  '(scroll-bar-mode nil))
 
 (custom-set-faces
@@ -210,6 +290,7 @@ With argument ARG, do this that many times."
  '(font-lock-doc-face ((t (:inherit font-lock-comment-face))))
  '(js2-error ((t nil)))
  '(js2-external-variable ((t nil)))
+ '(mode-line ((t (:background "grey75" :foreground "black"))))
  '(powerline-active0 ((t (:background "tomato" :foreground "white" :weight bold))))
  '(powerline-active1 ((t (:background "gray95"))))
  '(powerline-active2 ((t (:background "gray95"))))
