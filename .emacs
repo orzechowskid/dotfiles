@@ -16,25 +16,22 @@
 
 ;; these things are used by multiple major modes and/or get configured before any
 ;; buffers are opened, so they're not good candidates for autoload
+
+;; code completion
 (require 'company)
 (require 'company-quickhelp)
+(require 'company-web-html)
+;; mode line cleaner-upper
 (require 'delight)
-(require 'powerline)
+;; code analysis
 (require 'eglot)
+;; linting
 (require 'flymake)
-                                        ;(require 'smart-jump)
+;; mode line customization
+(require 'powerline)
 
-(delight '((emacs-lisp-mode "ELisp")))
-(advice-add 'powerline-major-mode :around
-            (lambda (original-fn &rest args)
-              (let ((inhibit-mode-name-delight nil))
-                (funcall original-fn args))))
-(advice-add 'flymake--mode-line-format :filter-return
-            (lambda (&rest return-value)
-              (setf (seq-elt (car return-value) 0) " !")
-              return-value))
+;; these guys, however...
 
-;; these things, however...
 (autoload 'coverlay-mode "coverlay"
   "Use the coverlay package to provide 'coverlay-mode on-demand."
   t)
@@ -52,6 +49,9 @@
   t)
 (autoload 'scss-mode "scss-mode"
   "Use the scss-mode package to provide 'scss-mode on-demand."
+  t)
+(autoload 'xref-js2-xref-backend "xref-js2"
+  "Use the xref-js2 package to provide 'xref-js2-xref-backend on-demand."
   t)
 
 
@@ -78,6 +78,25 @@ With argument ARG, do this that many times."
                     (display-local-help)
                   (funcall oldfn doc-msg)))))
 
+;; tell powerline to use the modifications made by delight
+(advice-add 'powerline-major-mode :around
+            (lambda (original-fn &rest args)
+              (let ((inhibit-mode-name-delight nil))
+                (funcall original-fn args))))
+;; shorten some major-mode strings
+(delight '((emacs-lisp-mode "ELisp")))
+;; remove some minor-mode strings
+(delight '((subword-mode nil "subword")
+           (company-mode nil "company")
+           (coverlay-minor-mode nil "coverlay")
+           (eldoc-mode nil "eldoc")
+           (auto-dim-other-buffers-mode nil "auto-dim-other-buffers")))
+;; shorten dynamically-generated Flymake minor-mode string
+(advice-add 'flymake--mode-line-format :filter-return
+            (lambda (&rest return-value)
+              (setf (seq-elt (car return-value) 0) "✓")
+              return-value))
+
 
 ;;; mode hooks and config
 
@@ -91,45 +110,50 @@ With argument ARG, do this that many times."
 
 (defun my-flymake-mode-hook ()
   "Do some things when enabling Flymake."
-  (setq-local help-at-pt-timer-delay 0.3)
   (help-at-pt-set-timer)
   (setq-local help-at-pt-display-when-idle t))
 
 (defun my-javascript-mode-hook ()
   "Do some things when opening JavaScript files."
-  ;; enable code-completion
-  (company-mode t)
-  ;; enable documentation in echo area
-  (eldoc-mode t)
-  ;; enable camelCase-aware code navigation
+  ;; turn on camelCase-aware code navigation
   (subword-mode t)
-  ;; use eglot to connect to a language server
+  ;; enable code-completion mode
+  (company-mode t)
+  (company-quickhelp-mode t)
+  ;; hook up to LSP server
+  ;; tell eglot to ignore its own Flymake backend (which doesn't seem to do anything)
   (add-hook 'eglot--managed-mode-hook
             (lambda ()
-              ;; eglot's built-in Flymake backend is junk for JS
               (remove-hook 'flymake-diagnostic-functions 'eglot-flymake-backend t)
-              ;; add our own
               (flymake-eslint-enable))
             nil t)
   (eglot-ensure)
-  ;; turn on inline test coverage if not a test file
+  (define-key js2-mode-map (kbd "M-.") nil)
+  (add-hook 'xref-backend-functions #'xref-js2-xref-backend nil t)
+  ;; code-coverage
   (unless (string-match-p "test.js[x]?\\'" buffer-file-name)
+    ;; turn on coverage mode if not a test file
+
     (coverlay-minor-mode t)
-    ;; load and watch the closest coverage data if none loaded yet
     (unless (bound-and-true-p coverlay--loaded-filepath)
+      ;; load the closest coverage file if one hasn't been loaded yet
       (coverlay-watch-file (concat (locate-dominating-file buffer-file-name "coverage")
                                    "coverage/lcov.info")))))
 
 (defun my-json-mode-hook ()
   "Do some things when opening JSON files."
   (make-local-variable 'js-indent-level)
-;  (set 'js-indent-level 2)
+  ;;  (set 'js-indent-level 2)
   )
 
-(defun my-lisp-mode-hook ()
-  "Do some things when opening LISP files."
-  (eldoc-mode t)
+(defun common-lisp-mode-hook ()
+  "Do some things when entering a Lisp mode."
+  ;; enable code-completion mode
   (company-mode t)
+  (company-quickhelp-mode t)
+  ;; enable documentation in echo area
+  (eldoc-mode t)
+  ;; linter (most of the time)
   (when (not (string= (buffer-name) "*scratch*"))
     (flymake-mode t)))
 
@@ -138,10 +162,10 @@ With argument ARG, do this that many times."
   (subword-mode nil))
 
 (add-hook 'scss-mode-hook 'my-css-mode-hook)
-(add-hook 'emacs-lisp-mode-hook 'my-lisp-mode-hook)
+(add-hook 'emacs-lisp-mode-hook 'common-lisp-mode-hook)
 (add-hook 'rjsx-mode-hook 'my-javascript-mode-hook)
 (add-hook 'json-mode-hook 'my-json-mode-hook)
-(add-hook 'lisp-mode-hook 'my-lisp-mode-hook)
+(add-hook 'lisp-mode-hook 'common-lisp-mode-hook)
 (add-hook 'term-mode-hook 'my-terminal-mode-hook)
 (add-hook 'flymake-mode-hook 'my-flymake-mode-hook)
 
@@ -185,8 +209,11 @@ With argument ARG, do this that many times."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(auto-dim-other-buffers-mode t)
  '(company-minimum-prefix-length 1)
- '(company-quickhelp-delay 0.25)
+ '(company-quickhelp-color-background nil)
+ '(company-quickhelp-color-foreground nil)
+ '(company-quickhelp-delay 1.0)
  '(company-tooltip-align-annotations t)
  '(coverlay:mark-tested-lines nil)
  '(coverlay:untested-line-background-color "#ffe8e8")
@@ -197,15 +224,90 @@ With argument ARG, do this that many times."
  '(flymake-warning-bitmap '(flymake-big-indicator compilation-warning))
  '(frame-title-format '("%f") t)
  '(fringe-mode 20 nil (fringe))
+ '(help-at-pt-display-when-idle '(flymake-diagnostic) nil (help-at-pt))
+ '(help-at-pt-timer-delay 0.25)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
- '(js-switch-indent-offset 2)
+ '(js-switch-indent-offset 4)
  '(js2-highlight-external-variables nil)
+ '(js2-include-browser-externs nil)
+ '(js2-include-jslint-declaration-externs nil)
+ '(js2-include-jslint-globals nil)
+ '(js2-indent-switch-body t)
+ '(js2-mode-show-parse-errors nil)
+ '(js2-mode-show-strict-warnings nil)
+ '(js2-strict-cond-assign-warning nil)
+ '(js2-strict-inconsistent-return-warning nil)
+ '(js2-strict-missing-semi-warning nil)
+ '(js2-strict-var-hides-function-arg-warning nil)
+ '(js2-strict-var-redeclaration-warning nil)
+ '(mode-line-format
+   '("%e"
+     (:eval
+      (let*
+          ((active
+            (powerline-selected-window-active))
+           (mode-line-buffer-id
+            (if active 'mode-line-buffer-id 'mode-line-buffer-id-inactive))
+           (mode-line
+            (if active 'mode-line 'mode-line-inactive))
+           (face0
+            (if active 'powerline-active0 'powerline-inactive0))
+           (face1
+            (if active 'powerline-active1 'powerline-inactive1))
+           (face2
+            (if active 'powerline-active2 'powerline-inactive2))
+           (separator-left
+            (intern
+             (format "powerline-%s-%s"
+                     (powerline-current-separator)
+                     (car powerline-default-separator-dir))))
+           (separator-right
+            (intern
+             (format "powerline-%s-%s"
+                     (powerline-current-separator)
+                     (cdr powerline-default-separator-dir))))
+           (lhs
+            (list
+             (powerline-raw "%*" face0 'l)
+             (powerline-buffer-id
+              `(mode-line-buffer-id ,face0)
+              'l)
+             (powerline-raw " " face0)
+             (funcall separator-left face0 face1)
+             (powerline-raw " " face1)
+             (powerline-major-mode face1)
+             (powerline-process face1)
+             (powerline-minor-modes face1 'l)
+             (powerline-narrow face1 'l)
+             (powerline-raw " " face1)
+             (funcall separator-left face1 face2)
+             (powerline-vc face2 'r)))
+           (rhs
+            (list
+             (powerline-raw global-mode-string face2 'r)
+             (funcall separator-right face2 face1)
+             (unless window-system
+               (powerline-raw
+                (char-to-string 57505)
+                face1 'l))
+             (powerline-raw "%4l" face1 'l)
+             (powerline-raw ":" face1 'l)
+             (powerline-raw "%3c" face1 'r)
+             (funcall separator-right face1 face0)
+             (powerline-raw " " face0)
+             (powerline-fill face0 0))))
+        (concat
+         (powerline-render lhs)
+         (powerline-fill face2
+                         (powerline-width rhs))
+         (powerline-render rhs))))))
  '(package-selected-packages
-   '(delight flymake-eslint origami powerline company package-lint package-lint-flymake treepy request smart-jump rjsx-mode web-mode-edit-element web-mode scss-mode multi-term markdown-mode json-mode eglot coverlay company-web company-quickhelp))
+   '(xref-js2 auto-dim-other-buffers scss-mode rjsx-mode powerline markdown-mode json-mode flymake-eslint eglot delight coverlay company-quickhelp))
  '(powerline-display-buffer-size nil)
  '(powerline-display-hud nil)
  '(powerline-display-mule-info nil)
+ '(powerline-gui-use-vcs-glyph t)
  '(scroll-bar-mode nil))
 
 (custom-set-faces
@@ -213,10 +315,20 @@ With argument ARG, do this that many times."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(auto-dim-other-buffers-face ((t (:background "#f4f4f4" :foreground "#808080"))))
+ '(company-preview ((t (:inherit company-tooltip-selection))))
+ '(company-scrollbar-bg ((t (:background "gray95"))))
+ '(company-scrollbar-fg ((t (:background "tomato"))))
+ '(company-tooltip-annotation ((t (:foreground "firebrick4"))))
+ '(company-tooltip-common ((t (:foreground "black"))))
+ '(company-tooltip-selection ((t (:background "steel blue" :foreground "white"))))
  '(flymake-warning ((t (:underline (:color "dark orange" :style wave)))))
  '(font-lock-doc-face ((t (:inherit font-lock-comment-face))))
+ '(font-lock-function-name-face ((t (:foreground "Blue1" :weight bold))))
  '(js2-error ((t nil)))
  '(js2-external-variable ((t nil)))
+ '(js2-jsdoc-tag ((t (:inherit font-lock-comment-face :weight bold))))
+ '(js2-warning ((t nil)))
  '(mode-line ((t (:background "grey75" :foreground "black"))))
  '(powerline-active0 ((t (:background "tomato" :foreground "white" :weight bold))))
  '(powerline-active1 ((t (:background "gray95"))))
@@ -263,9 +375,7 @@ With argument ARG, do this that many times."
 
 (add-hook 'after-init-hook
 	  (lambda ()
-            (company-quickhelp-mode)
-            (powerline-default-theme)
-;            (smart-jump-register :modes '(js2-mode eglot-mode))
+            ;; (smart-jump-register :modes '(js2-mode eglot-mode))
             (auto-compression-mode -1)
             (auto-encryption-mode -1)
             (blink-cursor-mode -1)
