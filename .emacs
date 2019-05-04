@@ -159,6 +159,8 @@ With argument ARG, do this that many times."
 
 (defun my-terminal-mode-hook ()
   "Do some things when opening a terminal."
+  ;; for terminals only, we want the default face to be reversed
+  (face-remap-add-relative 'default '((:background "black") (:foreground "white")))
   (subword-mode nil))
 
 (add-hook 'scss-mode-hook 'my-css-mode-hook)
@@ -327,7 +329,7 @@ With argument ARG, do this that many times."
  '(font-lock-function-name-face ((t (:foreground "steel blue" :weight bold))))
  '(js2-error ((t nil)))
  '(js2-external-variable ((t nil)))
- '(js2-function-call ((t (:inherit font-lock-function-name-face :weight light))))
+ '(js2-function-call ((t (:inherit font-lock-function-name-face :weight normal))))
  '(js2-jsdoc-tag ((t (:inherit font-lock-comment-face :weight bold))))
  '(js2-jsdoc-value ((t (:inherit js2-function-param))))
  '(js2-warning ((t nil)))
@@ -341,7 +343,10 @@ With argument ARG, do this that many times."
  '(rjsx-attr ((t (:inherit rjsx-tag :weight normal))))
  '(rjsx-tag ((t (:foreground "dim gray" :weight bold))))
  '(rjsx-tag-bracket-face ((t (:inherit rjsx-tag))))
- '(rjsx-text ((t nil))))
+ '(rjsx-text ((t nil)))
+ '(term ((t (:background "black" :foreground "white"))))
+ '(term-bold ((t (:background "black" :foreground "white" :weight bold))))
+ '(term-color-blue ((t (:background "DeepSkyBlue4" :foreground "DeepSkyBlue4")))))
 
 
 ;;; key commands
