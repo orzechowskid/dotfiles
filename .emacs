@@ -330,6 +330,7 @@ With argument ARG, do this that many times."
  '(js2-error ((t nil)))
  '(js2-external-variable ((t nil)))
  '(js2-function-call ((t (:inherit font-lock-function-name-face :weight normal))))
+ '(js2-jsdoc-html-tag-name ((t (:inherit js2-jsdoc-type))))
  '(js2-jsdoc-tag ((t (:inherit font-lock-comment-face :weight bold))))
  '(js2-jsdoc-value ((t (:inherit js2-function-param))))
  '(js2-warning ((t nil)))
