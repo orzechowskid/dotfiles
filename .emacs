@@ -310,7 +310,8 @@ With argument ARG, do this that many times."
  '(powerline-display-hud nil)
  '(powerline-display-mule-info nil)
  '(powerline-gui-use-vcs-glyph t)
- '(scroll-bar-mode nil))
+ '(scroll-bar-mode nil)
+ '(sgml-basic-offset 4))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
