@@ -20,7 +20,6 @@
 ;; code completion
 (require 'company)
 (require 'company-quickhelp)
-(require 'company-web-html)
 ;; mode line cleaner-upper
 (require 'delight)
 ;; code analysis
@@ -37,6 +36,9 @@
   t)
 (autoload 'flymake-eslint-enable "flymake-eslint"
   "Use the flymake-eslint package to provide 'flymake-eslint-enable on-demand."
+  t)
+(autoload 'flymake-stylelint-enable "flymake-stylelint"
+  "Use the flymake-stylelint package to provide 'flymake-stylelint-enable on-demand."
   t)
 (autoload 'json-mode "json-mode"
   "Use the json-mode package to provide 'json-mode on-demand."
@@ -69,6 +71,15 @@ With argument ARG, do this that many times."
 With argument ARG, do this that many times."
   (interactive "p")
   (delete-region (point) (progn (forward-word arg) (point))))
+
+(defun eslint-fix-buffer ()
+  "Run `eslint --fix' on current buffer."
+  (interactive)
+  (if (executable-find "eslint_d")
+      (progn
+        (call-process "eslint_d" nil "*ESLint Errors*" nil "--fix" buffer-file-name)
+        (revert-buffer t t t))
+    (message "eslint_d not found")))
 
 ;; prefer contents of help-at-point (e.g., Flymake) over whatever eldoc outputs
 (advice-add 'eldoc-message :around
@@ -105,7 +116,7 @@ With argument ARG, do this that many times."
   "Do some things when opening [S]CSS files."
   (company-mode t)
   (eldoc-mode t)
-  ;; disabled-checkers list is buffer-local
+  (flymake-stylelint-enable)
   (subword-mode t))
 
 (defun my-flymake-mode-hook ()
@@ -130,6 +141,7 @@ With argument ARG, do this that many times."
   (eglot-ensure)
   (define-key js2-mode-map (kbd "M-.") nil)
   (add-hook 'xref-backend-functions #'xref-js2-xref-backend nil t)
+  (add-hook 'after-save-hook 'eslint-fix-buffer t t)
   ;; code-coverage
   (unless (string-match-p "test.js[x]?\\'" buffer-file-name)
     ;; turn on coverage mode if not a test file
@@ -143,7 +155,7 @@ With argument ARG, do this that many times."
 (defun my-json-mode-hook ()
   "Do some things when opening JSON files."
   (make-local-variable 'js-indent-level)
-  ;;  (set 'js-indent-level 2)
+  (set 'js-indent-level 2)
   )
 
 (defun common-lisp-mode-hook ()
@@ -220,9 +232,13 @@ With argument ARG, do this that many times."
  '(coverlay:mark-tested-lines nil)
  '(coverlay:untested-line-background-color "#ffe8e8")
  '(cua-mode t nil (cua-base))
+ '(djsx-ast4e-binary "/home/dan/repos/djsx/ast4e/start.sh")
  '(flymake-error-bitmap '(flymake-big-indicator compilation-error))
  '(flymake-eslint-executable-name "eslint_d")
+ '(flymake-jslint-args '("--no-color" "--no-ignore" "--stdin"))
+ '(flymake-jslint-command "eslint")
  '(flymake-no-changes-timeout 0.5)
+ '(flymake-stylelint-executable-args "-q")
  '(flymake-warning-bitmap '(flymake-big-indicator compilation-warning))
  '(frame-title-format '("%f") t)
  '(fringe-mode 20 nil (fringe))
@@ -230,6 +246,8 @@ With argument ARG, do this that many times."
  '(help-at-pt-timer-delay 0.25)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
+ '(js-chain-indent nil)
+ '(js-enabled-frameworks nil)
  '(js-switch-indent-offset 4)
  '(js2-highlight-external-variables nil)
  '(js2-include-browser-externs nil)
@@ -305,7 +323,7 @@ With argument ARG, do this that many times."
                          (powerline-width rhs))
          (powerline-render rhs))))))
  '(package-selected-packages
-   '(xref-js2 auto-dim-other-buffers scss-mode rjsx-mode powerline markdown-mode json-mode flymake-eslint eglot delight coverlay company-quickhelp))
+   '(request flymake-stylelint company xref-js2 auto-dim-other-buffers scss-mode rjsx-mode powerline markdown-mode json-mode flymake-eslint eglot delight coverlay company-quickhelp))
  '(powerline-display-buffer-size nil)
  '(powerline-display-hud nil)
  '(powerline-display-mule-info nil)
@@ -377,6 +395,8 @@ With argument ARG, do this that many times."
 ;; use useful Flycheck key bindings in Flymake
 (define-key flymake-mode-map (kbd "C-c ! n") 'flymake-goto-next-error)
 (define-key flymake-mode-map (kbd "C-c ! p") 'flymake-goto-prev-error)
+;; I don't use this
+(global-set-key (kbd "C-x C-k") nil)
 
 
 ;;; post-init
