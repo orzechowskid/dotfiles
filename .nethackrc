@@ -21,3 +21,11 @@ MENUCOLOR="cursed"=red
 MENUCOLOR="uncursed"=yellow
 
 SYMBOLS=S_boulder:0
+
+#OPTIONS=windowtype:curses
+OPTIONS=align_status:bottom
+OPTIONS=align_message:top
+#OPTIONS=windowborders:3
+#OPTIONS=term_cols:124
+#OPTIONS=term_rows:32
+#OPTIONS=perm_invent
