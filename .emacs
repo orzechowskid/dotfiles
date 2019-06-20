@@ -52,8 +52,8 @@
 (autoload 'scss-mode "scss-mode"
   "Use the scss-mode package to provide 'scss-mode on-demand."
   t)
-(autoload 'xref-js2-xref-backend "xref-js2"
-  "Use the xref-js2 package to provide 'xref-js2-xref-backend on-demand."
+(autoload 'tide-setup "tide"
+  "Use the tide package to provide 'tide-setup on-demand."
   t)
 
 
@@ -99,6 +99,7 @@ With argument ARG, do this that many times."
 ;; remove some minor-mode strings
 (delight '((subword-mode nil "subword")
            (company-mode nil "company")
+           (tide-mode nil "tide")
            (coverlay-minor-mode nil "coverlay")
            (eldoc-mode nil "eldoc")
            (auto-dim-other-buffers-mode nil "auto-dim-other-buffers")))
@@ -126,26 +127,20 @@ With argument ARG, do this that many times."
 
 (defun my-javascript-mode-hook ()
   "Do some things when opening JavaScript files."
-  ;; turn on camelCase-aware code navigation
+  ;; enable code analysis
+  (tide-setup)
+  ;; enable camelCase-aware code navigation
   (subword-mode t)
-  ;; enable code-completion mode
+  ;; enable linting
+  (flymake-eslint-enable)
+  ;; enable documentation
+  (eldoc-mode t)
+  ;; enable code-completion
   (company-mode t)
-  (company-quickhelp-mode t)
-  ;; hook up to LSP server
-  ;; tell eglot to ignore its own Flymake backend (which doesn't seem to do anything)
-  (add-hook 'eglot--managed-mode-hook
-            (lambda ()
-              (remove-hook 'flymake-diagnostic-functions 'eglot-flymake-backend t)
-              (flymake-eslint-enable))
-            nil t)
-  (eglot-ensure)
-  (define-key js2-mode-map (kbd "M-.") nil)
-  (add-hook 'xref-backend-functions #'xref-js2-xref-backend nil t)
+  ;; run `eslint --fix' upon save
   (add-hook 'after-save-hook 'eslint-fix-buffer t t)
-  ;; code-coverage
+  ;; turn on coverage mode if not a test file
   (unless (string-match-p "test.js[x]?\\'" buffer-file-name)
-    ;; turn on coverage mode if not a test file
-
     (coverlay-minor-mode t)
     (unless (bound-and-true-p coverlay--loaded-filepath)
       ;; load the closest coverage file if one hasn't been loaded yet
@@ -323,7 +318,7 @@ With argument ARG, do this that many times."
                          (powerline-width rhs))
          (powerline-render rhs))))))
  '(package-selected-packages
-   '(request flymake-stylelint company xref-js2 auto-dim-other-buffers scss-mode rjsx-mode powerline markdown-mode json-mode flymake-eslint eglot delight coverlay company-quickhelp))
+   '(tide request flymake-stylelint company auto-dim-other-buffers scss-mode rjsx-mode powerline markdown-mode json-mode flymake-eslint eglot delight coverlay company-quickhelp))
  '(powerline-display-buffer-size nil)
  '(powerline-display-hud nil)
  '(powerline-display-mule-info nil)
