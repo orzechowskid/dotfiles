@@ -28,8 +28,6 @@
 (require 'company-web-html) ; not an ELPA package, but rather provided by company
 ;; mode line cleaner-upper
 (require 'delight)
-;; code analysis
-(require 'eglot)
 ;; mode line customization
 (require 'powerline)
 
@@ -40,6 +38,9 @@
   t)
 (autoload 'flymake-eslint-enable "flymake-eslint"
   "Use the flymake-eslint package to provide 'flymake-eslint-enable on demand."
+  t)
+(autoload 'flymake-stylelint-enable "flymake-stylelint"
+  "Use the flymake-stylelint package to provide 'flymake-stylelint-enable on demand."
   t)
 (autoload 'json-mode "json-mode"
   "Use the json-mode package to provide 'json-mode on-demand."
@@ -52,6 +53,9 @@
   t)
 (autoload 'rjsx-mode "rjsx-mode"
   "Use the rjsx-mode package to provide 'rjsx-mode on-demand."
+  t)
+(autoload 'tide-setup "tide"
+  "Use the tide package to provide 'tide-setup on-demand."
   t)
 
 
@@ -88,7 +92,7 @@ With argument ARG, do this that many times."
 ;; shorten dynamically-generated Flymake minor-mode string
 (advice-add 'flymake--mode-line-format :filter-return
             (lambda (&rest return-value)
-              (setf (seq-elt (car return-value) 0) " !")
+              (setf (seq-elt (car return-value) 0) " ✓")
               return-value))
 
 ;;;
@@ -98,18 +102,19 @@ With argument ARG, do this that many times."
 
 (defun common-javascript-mode-hook ()
   "Do some things when entering a javascript mode."
+  ;; code analysis
+  (tide-setup)
+  ;; indents of 4 spaces
+  (setq-local sgml-basic-offset 4)
   ;; turn on camelCase-aware code navigation
   (subword-mode t)
   ;; enable code-completion mode
   (company-mode t)
   (company-quickhelp-mode t)
-  ;; hook up to LSP server
-  ;; tell eglot to ignore its own Flymake backend (which doesn't seem to do anything)
-  (add-hook 'eglot--managed-mode-hook
-            (lambda ()
-              (remove-hook 'flymake-diagnostic-functions 'eglot-flymake-backend t) ; t for buffer-local
-              (flymake-eslint-enable)))
-  (eglot-ensure)
+  ;; linting
+  (flymake-eslint-enable)
+  ;; documentation
+  (eldoc-mode t)
   ;; lint upon save
 ;  (add-hook 'after-save-hook 'lint-fix-js t t)
   ;; code-coverage
@@ -123,6 +128,10 @@ With argument ARG, do this that many times."
                             (locate-dominating-file buffer-file-name "coverage")
                             "coverage/lcov.info")))))
 
+(defun common-json-mode-hook ()
+  "Do some things when entering a JSON mode."
+  (flymake-json-load))
+
 (defun common-lisp-mode-hook ()
   "Do some things when entering a Lisp mode."
   ;; enable code-completion mode
@@ -133,23 +142,21 @@ With argument ARG, do this that many times."
   ;; linter
   (flymake-mode t))
 
+(defun common-scss-mode-hook ()
+  "Do some things when entering a CSS-like mode."
+  (subword-mode t)
+  (company-mode t)
+  (flymake-stylelint-enable))
+
 ;; do some things after entering certain major modes
+(add-hook 'json-mode-hook 'common-json-mode-hook)
 (add-hook 'rjsx-mode-hook 'common-javascript-mode-hook)
 (add-hook 'lisp-mode-hook 'common-lisp-mode-hook)
 (add-hook 'emacs-lisp-mode-hook 'common-lisp-mode-hook)
+(add-hook 'scss-mode-hook 'common-scss-mode-hook)
 
 ;; associate some major modes with some file extensions
 (push '("\\.js[x]?\\'" . rjsx-mode) auto-mode-alist)
-
-;; tell eglot to use the JS language server for web-mode
-(push '(rjsx-mode . ("javascript-typescript-stdio")) eglot-server-programs)
-
-
-;; tell eglot to prefer help-at-point (e.g. Flymake) over eldoc
-(advice-add 'eglot-eldoc-function :around
-            (lambda (original-fn)
-              (let ((help (help-at-pt-kbd-string)))
-                (if help (message "%s" help) (funcall original-fn)))))
 
 
 ;;;
@@ -192,7 +199,9 @@ With argument ARG, do this that many times."
  '(cua-mode t nil (cua-base))
  '(flymake-error-bitmap (quote (flycheck-big-indicator compilation-error)))
  '(flymake-eslint-executable-name "eslint_d")
+ '(flymake-stylelint-executable-args "--syntax scss")
  '(flymake-warning-bitmap (quote (flycheck-big-indicator compilation-warning)))
+ '(frame-title-format (quote ("%f")) t)
  '(fringe-mode (quote (20)) nil (fringe))
  '(help-at-pt-display-when-idle (quote (flymake-diagnostic)) nil (help-at-pt))
  '(help-at-pt-timer-delay 0.25)
@@ -283,10 +292,7 @@ With argument ARG, do this that many times."
              (powerline-raw ":" face1
                             (quote l))
              (powerline-raw "%3c" face1
-                            (quote r))
-             (funcall separator-right face1 face0)
-             (powerline-raw " " face0)
-             (powerline-fill face0 0))))
+                            (quote r)))))
         (concat
          (powerline-render lhs)
          (powerline-fill face2
@@ -294,11 +300,8 @@ With argument ARG, do this that many times."
          (powerline-render rhs)))))))
  '(package-selected-packages
    (quote
-    (auto-dim-other-buffers delight company rjsx-mode xref-js2 flymake-eslint yaml-mode scss-mode request powerline markdown-mode json-mode idle-highlight-mode git-commit eglot coverlay company-web company-quickhelp)))
- '(powerline-display-buffer-size nil)
- '(powerline-display-hud nil)
- '(powerline-display-mule-info nil)
- '(powerline-gui-use-vcs-glyph t))
+    (tide flymake-stylelint dockerfile-mode flymake flymake-json auto-dim-other-buffers delight company rjsx-mode xref-js2 flymake-eslint yaml-mode scss-mode request powerline markdown-mode json-mode idle-highlight-mode git-commit coverlay company-web company-quickhelp)))
+ '(scroll-bar-mode nil))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
@@ -311,8 +314,13 @@ With argument ARG, do this that many times."
  '(company-tooltip-annotation ((t (:foreground "firebrick4"))))
  '(company-tooltip-common ((t (:foreground "black"))))
  '(company-tooltip-selection ((t (:background "steel blue" :foreground "white"))))
+ '(css-selector ((t nil)))
  '(flymake-warning ((t (:underline (:color "dark orange" :style wave)))))
+ '(font-lock-function-name-face ((t (:foreground "steel blue" :weight bold))))
  '(js2-error ((t nil)))
+ '(js2-function-call ((t (:inherit font-lock-function-name-face :weight light))))
+ '(js2-jsdoc-tag ((t (:inherit font-lock-doc-face :weight bold))))
+ '(js2-jsdoc-value ((t (:inherit js2-function-param))))
  '(js2-warning ((t nil)))
  '(mode-line ((t (:background "grey75" :foreground "black"))))
  '(powerline-active0 ((t (:background "tomato" :foreground "white" :weight bold))))
@@ -322,8 +330,8 @@ With argument ARG, do this that many times."
  '(powerline-inactive1 ((t (:background "gray98"))))
  '(powerline-inactive2 ((t (:background "gray98"))))
  '(rjsx-attr ((t (:foreground "dim gray"))))
- '(rjsx-tag ((t (:foreground "dim gray"))))
- '(rjsx-tag-bracket-face ((t (:inherit default :foreground "dim gray" :weight bold)))))
+ '(rjsx-tag ((t (:inherit rjsx-tag-bracket-face))))
+ '(rjsx-tag-bracket-face ((t (:inherit default :foreground "#666666" :weight bold)))))
 
 
 ;;;
@@ -351,7 +359,11 @@ With argument ARG, do this that many times."
                   (other-window -1)))
 ;; Ctrl-a -> select entire file
 (global-set-key (kbd "C-a") 'mark-whole-buffer)
-
+;; I like arrow keys and I dislike hitting these keystrokes by accident
+(global-set-key (kbd "C-f") nil)
+(global-set-key (kbd "C-b") nil)
+;; CUA-mode makes this superfluous for me
+(global-set-key (kbd "C-k") nil)
 
 ;;;
 ;;; post-init hook
