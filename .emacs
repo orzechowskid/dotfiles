@@ -94,6 +94,11 @@ With argument ARG, do this that many times."
             (lambda (&rest return-value)
               (setf (seq-elt (car return-value) 0) " ✓")
               return-value))
+;; prefer flymake output to eldoc output
+(advice-add 'tide-eldoc-function :around
+            (lambda (originalFn &rest args)
+              (let ((help (help-at-pt-kbd-string)))
+                (if help (message "%s" help) (funcall originalFn args)))))
 
 ;;;
 ;;; mode-specific config
@@ -207,6 +212,7 @@ With argument ARG, do this that many times."
  '(help-at-pt-timer-delay 0.25)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
+ '(js-switch-indent-offset 4)
  '(js2-include-browser-externs nil)
  '(js2-include-jslint-declaration-externs nil)
  '(js2-include-jslint-globals nil)
