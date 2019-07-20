@@ -22,8 +22,6 @@
 (require 'company-quickhelp)
 ;; mode line cleaner-upper
 (require 'delight)
-;; code analysis
-(require 'eglot)
 ;; linting
 (require 'flymake)
 ;; mode line customization
@@ -185,9 +183,6 @@ With argument ARG, do this that many times."
 (push '("\\.less\\'" . scss-mode) auto-mode-alist)
 (push '("\\.md\\'" . markdown-mode) auto-mode-alist)
 
-;; associate some major modes with language server binaries
-(push '(rjsx-mode . ("javascript-typescript-stdio")) eglot-server-programs)
-
 
 ;;; variables and faces
 
@@ -318,7 +313,7 @@ With argument ARG, do this that many times."
                          (powerline-width rhs))
          (powerline-render rhs))))))
  '(package-selected-packages
-   '(tide request flymake-stylelint company auto-dim-other-buffers scss-mode rjsx-mode powerline markdown-mode json-mode flymake-eslint eglot delight coverlay company-quickhelp))
+   '(dockerfile-mode tide request flymake-stylelint company auto-dim-other-buffers scss-mode rjsx-mode powerline markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
  '(powerline-display-buffer-size nil)
  '(powerline-display-hud nil)
  '(powerline-display-mule-info nil)
@@ -399,7 +394,6 @@ With argument ARG, do this that many times."
 
 (add-hook 'after-init-hook
 	  (lambda ()
-            ;; (smart-jump-register :modes '(js2-mode eglot-mode))
             (auto-compression-mode -1)
             (auto-encryption-mode -1)
             (blink-cursor-mode -1)
