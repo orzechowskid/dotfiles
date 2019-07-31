@@ -94,11 +94,13 @@ With argument ARG, do this that many times."
             (lambda (&rest return-value)
               (setf (seq-elt (car return-value) 0) " ✓")
               return-value))
-;; prefer flymake output to eldoc output
-(advice-add 'tide-eldoc-function :around
-            (lambda (originalFn &rest args)
-              (let ((help (help-at-pt-kbd-string)))
-                (if help (message "%s" help) (funcall originalFn args)))))
+;; prefer contents of help-at-point (e.g., Flymake) over whatever eldoc outputs
+(advice-add 'eldoc-message :around
+            (lambda (oldfn doc-msg)
+              (let ((echo-help-string (help-at-pt-string)))
+                (if echo-help-string
+                    (display-local-help)
+                  (funcall oldfn doc-msg)))))
 
 ;;;
 ;;; mode-specific config
