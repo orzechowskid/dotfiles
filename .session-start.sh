@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # register this file with gnome-session-properties to run upon login
+# or add a .desktop entry to ~/.config/autostart
 
 xrdb -merge $HOME/.Xresources
 

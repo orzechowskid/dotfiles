@@ -10,6 +10,8 @@
 ;;; package things
 
 
+(package-initialize)
+
 ;; enable package-loading from MELPA
 (require 'package)
 (push '("melpa" . "https://melpa.org/packages/") package-archives)
@@ -92,9 +94,9 @@ With argument ARG, do this that many times."
             (lambda (original-fn &rest args)
               (let ((inhibit-mode-name-delight nil))
                 (funcall original-fn args))))
-;; shorten some major-mode strings
+;; shorten some major-mode modeline strings
 (delight '((emacs-lisp-mode "ELisp")))
-;; remove some minor-mode strings
+;; remove some minor-mode modeline strings
 (delight '((subword-mode nil "subword")
            (company-mode nil "company")
            (tide-mode nil "tide")
@@ -131,10 +133,11 @@ With argument ARG, do this that many times."
   (subword-mode t)
   ;; enable linting
   (flymake-eslint-enable)
-  ;; enable documentation
-  (eldoc-mode t)
+  (setq flymake-eslint-project-root (locate-dominating-file buffer-file-name ".eslintrc.js"))
   ;; enable code-completion
   (company-mode t)
+  ;; enable documentation
+  (eldoc-mode t)
   ;; run `eslint --fix' upon save
   (add-hook 'after-save-hook 'eslint-fix-buffer t t)
   ;; turn on coverage mode if not a test file
@@ -149,7 +152,8 @@ With argument ARG, do this that many times."
   "Do some things when opening JSON files."
   (make-local-variable 'js-indent-level)
   (set 'js-indent-level 2)
-  )
+  ;; enable camelCase-aware navigation
+  (subword-mode t))
 
 (defun common-lisp-mode-hook ()
   "Do some things when entering a Lisp mode."
@@ -214,6 +218,8 @@ With argument ARG, do this that many times."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(auto-dim-other-buffers-mode t)
+ '(backup-by-copying t)
+ '(blink-cursor-mode nil)
  '(company-minimum-prefix-length 1)
  '(company-quickhelp-color-background nil)
  '(company-quickhelp-color-foreground nil)
@@ -222,17 +228,18 @@ With argument ARG, do this that many times."
  '(coverlay:mark-tested-lines nil)
  '(coverlay:untested-line-background-color "#ffe8e8")
  '(cua-mode t nil (cua-base))
- '(djsx-ast4e-binary "/home/dan/repos/djsx/ast4e/start.sh")
- '(flymake-error-bitmap '(flymake-big-indicator compilation-error))
+ '(flymake-error-bitmap (quote (flymake-big-indicator compilation-error)))
  '(flymake-eslint-executable-name "eslint_d")
- '(flymake-jslint-args '("--no-color" "--no-ignore" "--stdin"))
+ '(flymake-jslint-args (quote ("--no-color" "--no-ignore" "--stdin")))
  '(flymake-jslint-command "eslint")
  '(flymake-no-changes-timeout 0.5)
  '(flymake-stylelint-executable-args "-q")
- '(flymake-warning-bitmap '(flymake-big-indicator compilation-warning))
- '(frame-title-format '("%f") t)
+ '(flymake-stylelint-executable-name "stylelint")
+ '(flymake-warning-bitmap (quote (flymake-big-indicator compilation-warning)))
+ '(font-use-system-font t)
+ '(frame-title-format (quote ("%f")) t)
  '(fringe-mode 20 nil (fringe))
- '(help-at-pt-display-when-idle '(flymake-diagnostic) nil (help-at-pt))
+ '(help-at-pt-display-when-idle (quote (flymake-diagnostic)) nil (help-at-pt))
  '(help-at-pt-timer-delay 0.25)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
@@ -251,22 +258,34 @@ With argument ARG, do this that many times."
  '(js2-strict-missing-semi-warning nil)
  '(js2-strict-var-hides-function-arg-warning nil)
  '(js2-strict-var-redeclaration-warning nil)
+ '(menu-bar-mode nil)
  '(mode-line-format
-   '("%e"
+   (quote
+    ("%e"
      (:eval
       (let*
           ((active
             (powerline-selected-window-active))
            (mode-line-buffer-id
-            (if active 'mode-line-buffer-id 'mode-line-buffer-id-inactive))
+            (if active
+                (quote mode-line-buffer-id)
+              (quote mode-line-buffer-id-inactive)))
            (mode-line
-            (if active 'mode-line 'mode-line-inactive))
+            (if active
+                (quote mode-line)
+              (quote mode-line-inactive)))
            (face0
-            (if active 'powerline-active0 'powerline-inactive0))
+            (if active
+                (quote powerline-active0)
+              (quote powerline-inactive0)))
            (face1
-            (if active 'powerline-active1 'powerline-inactive1))
+            (if active
+                (quote powerline-active1)
+              (quote powerline-inactive1)))
            (face2
-            (if active 'powerline-active2 'powerline-inactive2))
+            (if active
+                (quote powerline-active2)
+              (quote powerline-inactive2)))
            (separator-left
             (intern
              (format "powerline-%s-%s"
@@ -279,31 +298,42 @@ With argument ARG, do this that many times."
                      (cdr powerline-default-separator-dir))))
            (lhs
             (list
-             (powerline-raw "%*" face0 'l)
+             (powerline-raw "%*" face0
+                            (quote l))
              (powerline-buffer-id
-              `(mode-line-buffer-id ,face0)
-              'l)
+              (\`
+               (mode-line-buffer-id
+                (\, face0)))
+              (quote l))
              (powerline-raw " " face0)
              (funcall separator-left face0 face1)
              (powerline-raw " " face1)
              (powerline-major-mode face1)
              (powerline-process face1)
-             (powerline-minor-modes face1 'l)
-             (powerline-narrow face1 'l)
+             (powerline-minor-modes face1
+                                    (quote l))
+             (powerline-narrow face1
+                               (quote l))
              (powerline-raw " " face1)
              (funcall separator-left face1 face2)
-             (powerline-vc face2 'r)))
+             (powerline-vc face2
+                           (quote r))))
            (rhs
             (list
-             (powerline-raw global-mode-string face2 'r)
+             (powerline-raw global-mode-string face2
+                            (quote r))
              (funcall separator-right face2 face1)
              (unless window-system
                (powerline-raw
                 (char-to-string 57505)
-                face1 'l))
-             (powerline-raw "%4l" face1 'l)
-             (powerline-raw ":" face1 'l)
-             (powerline-raw "%3c" face1 'r)
+                face1
+                (quote l)))
+             (powerline-raw "%4l" face1
+                            (quote l))
+             (powerline-raw ":" face1
+                            (quote l))
+             (powerline-raw "%3c" face1
+                            (quote r))
              (funcall separator-right face1 face0)
              (powerline-raw " " face0)
              (powerline-fill face0 0))))
@@ -311,21 +341,24 @@ With argument ARG, do this that many times."
          (powerline-render lhs)
          (powerline-fill face2
                          (powerline-width rhs))
-         (powerline-render rhs))))))
+         (powerline-render rhs)))))))
  '(package-selected-packages
-   '(dockerfile-mode tide request flymake-stylelint company auto-dim-other-buffers scss-mode rjsx-mode powerline markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
+   (quote
+    (projectile treemacs-projectile treemacs 2048-game dockerfile-mode tide request flymake-stylelint company auto-dim-other-buffers scss-mode rjsx-mode powerline markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp)))
  '(powerline-display-buffer-size nil)
  '(powerline-display-hud nil)
  '(powerline-display-mule-info nil)
  '(powerline-gui-use-vcs-glyph t)
  '(scroll-bar-mode nil)
- '(sgml-basic-offset 4))
+ '(sgml-basic-offset 4)
+ '(tool-bar-mode nil))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(default ((t (:inherit nil :stipple nil :background "white" :foreground "black" :inverse-video nil :box nil :strike-through nil :overline nil :underline nil :slant normal :weight light :height 132 :width normal :foundry "ADBO" :family "Source Code Pro"))))
  '(auto-dim-other-buffers-face ((t (:background "#f4f4f4" :foreground "#808080"))))
  '(company-preview ((t (:inherit company-tooltip-selection))))
  '(company-scrollbar-bg ((t (:background "gray95"))))
@@ -334,6 +367,7 @@ With argument ARG, do this that many times."
  '(company-tooltip-common ((t (:foreground "black"))))
  '(company-tooltip-selection ((t (:background "steel blue" :foreground "white"))))
  '(flymake-warning ((t (:underline (:color "dark orange" :style wave)))))
+ '(font-lock-comment-face ((t (:inherit default :foreground "Firebrick"))))
  '(font-lock-doc-face ((t (:inherit font-lock-comment-face))))
  '(font-lock-function-name-face ((t (:foreground "steel blue" :weight bold))))
  '(js2-error ((t nil)))
@@ -385,6 +419,8 @@ With argument ARG, do this that many times."
 ;; use useful Flycheck key bindings in Flymake
 (define-key flymake-mode-map (kbd "C-c ! n") 'flymake-goto-next-error)
 (define-key flymake-mode-map (kbd "C-c ! p") 'flymake-goto-prev-error)
+;; keyboard command to force auto-completion
+(define-key company-mode-map (kbd "M-/") 'company-complete)
 ;; I don't use this
 (global-set-key (kbd "C-x C-k") nil)
 
@@ -393,7 +429,7 @@ With argument ARG, do this that many times."
 
 
 (add-hook 'after-init-hook
-	  (lambda ()
+          (lambda ()
             (auto-compression-mode -1)
             (auto-encryption-mode -1)
             (blink-cursor-mode -1)
@@ -401,7 +437,7 @@ With argument ARG, do this that many times."
             (global-auto-composition-mode -1)
             (package-refresh-contents t)
             ;; keep me last
-	    (message (emacs-init-time))))
+            (message "startup time: %s" (emacs-init-time))))
 
 (provide 'emacs)
 ;;; .emacs ends here

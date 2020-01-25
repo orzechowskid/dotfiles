@@ -1,8 +1,8 @@
 ! 1920x1080x13.3in : 166dpi
 ! 2560x1440x13.3in : 221ppi
 ! 3200x1800x13.3in : 276dpi
-Xft.dpi: 221
-!Xft.dpi: 276
+!Xft.dpi: 221
+Xft.dpi: 276
 
 ! 3200x1800 works best with font scaling set to 1.5 via gnome-tweak-tool
 
@@ -43,8 +43,3 @@ URxvt*scrollWithTtyOutput: false
 URxvt*skipScroll: true
 
 Xcursor.size: 48
-
-Emacs*MenuBar: false
-Emacs*ScrollBar: false
-Emacs*ToolBar: false
-Emacs*font: xft:-ADBO-Source Code Pro-light-normal-normal-*-20-*-*-*-m-0-iso10646-1
