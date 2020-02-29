@@ -236,7 +236,7 @@ With argument ARG, do this that many times."
  '(flymake-stylelint-executable-args "-q")
  '(flymake-stylelint-executable-name "stylelint")
  '(flymake-warning-bitmap (quote (flymake-big-indicator compilation-warning)))
- '(font-use-system-font t)
+ '(font-use-system-font nil)
  '(frame-title-format (quote ("%f")) t)
  '(fringe-mode 20 nil (fringe))
  '(help-at-pt-display-when-idle (quote (flymake-diagnostic)) nil (help-at-pt))
@@ -358,7 +358,7 @@ With argument ARG, do this that many times."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(default ((t (:inherit nil :stipple nil :background "white" :foreground "black" :inverse-video nil :box nil :strike-through nil :overline nil :underline nil :slant normal :weight light :height 132 :width normal :foundry "ADBO" :family "Source Code Pro"))))
+ '(default ((t (:inherit nil :stipple nil :background "white" :foreground "black" :inverse-video nil :box nil :strike-through nil :overline nil :underline nil :slant normal :weight light :height 120 :width normal :foundry "ADBO" :family "Source Code Pro"))))
  '(auto-dim-other-buffers-face ((t (:background "#f4f4f4" :foreground "#808080"))))
  '(company-preview ((t (:inherit company-tooltip-selection))))
  '(company-scrollbar-bg ((t (:background "gray95"))))
@@ -430,6 +430,8 @@ With argument ARG, do this that many times."
 
 (add-hook 'after-init-hook
           (lambda ()
+            ;; make double-sure that the system terminal font doesn't override what's specified above
+            (define-key special-event-map [config-changed-event] 'ignore)
             (auto-compression-mode -1)
             (auto-encryption-mode -1)
             (blink-cursor-mode -1)
