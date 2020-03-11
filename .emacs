@@ -6,28 +6,27 @@
 (prefer-coding-system 'utf-8)
 (set-language-environment "UTF-8")
 
-;;;
-;;; packages
-;;;
+
+;;; package things
 
 
-;; load any non-standard packages from here
-(add-to-list 'load-path "~/.emacs.d/lisp")
+(package-initialize)
 
 ;; enable package-loading from MELPA
 (require 'package)
-(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/"))
-(package-initialize)
+(push '("melpa" . "https://melpa.org/packages/") package-archives)
 
-;; these packages are used by multiple major modes and/or I want to set some config on them
-;; at bootup; they're not good candidates for autoload
+;; these things are used by multiple major modes and/or get configured before any
+;; buffers are opened, so they're not good candidates for autoload
 
 ;; code completion
 (require 'company)
-(require 'company-quickhelp) ; documentation tooltips for code-completion popup
+(require 'company-quickhelp)
 (require 'company-web-html) ; not an ELPA package, but rather provided by company
 ;; mode line cleaner-upper
 (require 'delight)
+;; linting
+(require 'flymake)
 ;; mode line customization
 (require 'powerline)
 
@@ -48,20 +47,18 @@
 (autoload 'markdown-mode "markdown-mode"
   "Use the markdown-mode package to provide 'markdown-mode on-demand."
   t)
-(autoload 'scss-mode "scss-mode"
-  "Use the scss-mode package to provide 'scss-mode on-demand."
-  t)
 (autoload 'rjsx-mode "rjsx-mode"
   "Use the rjsx-mode package to provide 'rjsx-mode on-demand."
+  t)
+(autoload 'scss-mode "scss-mode"
+  "Use the scss-mode package to provide 'scss-mode on-demand."
   t)
 (autoload 'tide-setup "tide"
   "Use the tide package to provide 'tide-setup on-demand."
   t)
 
 
-;;;
 ;;; utility functions and advices
-;;;
 
 
 (defun backward-delete-word (arg)
@@ -76,24 +73,15 @@ With argument ARG, do this that many times."
   (interactive "p")
   (delete-region (point) (progn (forward-word arg) (point))))
 
-;; tell powerline to honor the modifications made by delight
-(advice-add 'powerline-major-mode :around
-            (lambda (original-fn &rest args)
-              (let ((inhibit-mode-name-delight nil))
-                (funcall original-fn args))))
-;; shorten "Emacs-Lisp" major-mode string
-(delight '((emacs-lisp-mode "ELisp")))
-;; remove some minor-mode strings
-(delight '((subword-mode nil "subword")
-           (company-mode nil "company")
-           (coverlay-minor-mode nil "coverlay")
-           (eldoc-mode nil "eldoc")
-           (auto-dim-other-buffers-mode nil "auto-dim-other-buffers")))
-;; shorten dynamically-generated Flymake minor-mode string
-(advice-add 'flymake--mode-line-format :filter-return
-            (lambda (&rest return-value)
-              (setf (seq-elt (car return-value) 0) " ✓")
-              return-value))
+(defun eslint-fix-buffer ()
+  "Run `eslint --fix' on current buffer."
+  (interactive)
+  (if (executable-find "eslint_d")
+      (progn
+        (call-process "eslint_d" nil "*ESLint Errors*" nil "--fix" buffer-file-name)
+        (revert-buffer t t t))
+    (message "eslint_d not found")))
+
 ;; prefer contents of help-at-point (e.g., Flymake) over whatever eldoc outputs
 (advice-add 'eldoc-message :around
             (lambda (oldfn doc-msg)
@@ -102,42 +90,71 @@ With argument ARG, do this that many times."
                     (display-local-help)
                   (funcall oldfn doc-msg)))))
 
-;;;
-;;; mode-specific config
-;;;
+;; tell powerline to use the modifications made by delight
+(advice-add 'powerline-major-mode :around
+            (lambda (original-fn &rest args)
+              (let ((inhibit-mode-name-delight nil))
+                (funcall original-fn args))))
+;; shorten some major-mode modeline strings
+(delight '((emacs-lisp-mode "ELisp")))
+;; remove some minor-mode modeline strings
+(delight '((subword-mode nil "subword")
+           (company-mode nil "company")
+           (tide-mode nil "tide")
+           (coverlay-minor-mode nil "coverlay")
+           (eldoc-mode nil "eldoc")
+           (auto-dim-other-buffers-mode nil "auto-dim-other-buffers")))
+;; shorten dynamically-generated Flymake minor-mode string
+(advice-add 'flymake--mode-line-format :filter-return
+            (lambda (&rest return-value)
+              (setf (seq-elt (car return-value) 0) "✓")
+              return-value))
 
 
-(defun common-javascript-mode-hook ()
-  "Do some things when entering a javascript mode."
-  ;; code analysis
-  (tide-setup)
-  ;; indents of 4 spaces
-  (setq-local sgml-basic-offset 4)
-  ;; turn on camelCase-aware code navigation
-  (subword-mode t)
-  ;; enable code-completion mode
+;;; mode hooks and config
+
+
+(defun my-css-mode-hook ()
+  "Do some things when opening [S]CSS files."
   (company-mode t)
-  (company-quickhelp-mode t)
-  ;; linting
-  (flymake-eslint-enable)
-  ;; documentation
   (eldoc-mode t)
-  ;; lint upon save
-;  (add-hook 'after-save-hook 'lint-fix-js t t)
-  ;; code-coverage
-  (unless (string-match-p "test.js[x]?\\'" buffer-file-name)
-    ;; turn on coverage mode if not a test file
+  (flymake-stylelint-enable)
+  (subword-mode t))
 
+(defun my-flymake-mode-hook ()
+  "Do some things when enabling Flymake."
+  (help-at-pt-set-timer)
+  (setq-local help-at-pt-display-when-idle t))
+
+(defun my-javascript-mode-hook ()
+  "Do some things when opening JavaScript files."
+  ;; enable code analysis
+  (tide-setup)
+  ;; enable camelCase-aware code navigation
+  (subword-mode t)
+  ;; enable linting
+  (flymake-eslint-enable)
+  (setq flymake-eslint-project-root (locate-dominating-file buffer-file-name ".eslintrc.js"))
+  ;; enable code-completion
+  (company-mode t)
+  ;; enable documentation
+  (eldoc-mode t)
+  ;; run `eslint --fix' upon save
+  (add-hook 'after-save-hook 'eslint-fix-buffer t t)
+  ;; turn on coverage mode if not a test file
+  (unless (string-match-p "test.js[x]?\\'" buffer-file-name)
     (coverlay-minor-mode t)
     (unless (bound-and-true-p coverlay--loaded-filepath)
       ;; load the closest coverage file if one hasn't been loaded yet
-      (coverlay-watch-file (concat
-                            (locate-dominating-file buffer-file-name "coverage")
-                            "coverage/lcov.info")))))
+      (coverlay-watch-file (concat (locate-dominating-file buffer-file-name "coverage")
+                                   "coverage/lcov.info")))))
 
-(defun common-json-mode-hook ()
-  "Do some things when entering a JSON mode."
-  (flymake-json-load))
+(defun my-json-mode-hook ()
+  "Do some things when opening JSON files."
+  (make-local-variable 'js-indent-level)
+  (set 'js-indent-level 2)
+  ;; enable camelCase-aware navigation
+  (subword-mode t))
 
 (defun common-lisp-mode-hook ()
   "Do some things when entering a Lisp mode."
@@ -146,34 +163,38 @@ With argument ARG, do this that many times."
   (company-quickhelp-mode t)
   ;; enable documentation in echo area
   (eldoc-mode t)
-  ;; linter
-  (flymake-mode t))
+  ;; linter (most of the time)
+  (when (not (string= (buffer-name) "*scratch*"))
+    (flymake-mode t)))
 
-(defun common-scss-mode-hook ()
-  "Do some things when entering a CSS-like mode."
-  (subword-mode t)
-  (company-mode t)
-  (flymake-stylelint-enable))
+(defun my-terminal-mode-hook ()
+  "Do some things when opening a terminal."
+  ;; for terminals only, we want the default face to be reversed
+  (face-remap-add-relative 'default '((:background "black") (:foreground "white")))
+  (subword-mode nil))
 
-;; do some things after entering certain major modes
-(add-hook 'json-mode-hook 'common-json-mode-hook)
-(add-hook 'rjsx-mode-hook 'common-javascript-mode-hook)
-(add-hook 'lisp-mode-hook 'common-lisp-mode-hook)
+(add-hook 'scss-mode-hook 'my-css-mode-hook)
 (add-hook 'emacs-lisp-mode-hook 'common-lisp-mode-hook)
-(add-hook 'scss-mode-hook 'common-scss-mode-hook)
+(add-hook 'rjsx-mode-hook 'my-javascript-mode-hook)
+(add-hook 'json-mode-hook 'my-json-mode-hook)
+(add-hook 'lisp-mode-hook 'common-lisp-mode-hook)
+(add-hook 'term-mode-hook 'my-terminal-mode-hook)
+(add-hook 'flymake-mode-hook 'my-flymake-mode-hook)
 
 ;; associate some major modes with some file extensions
 (push '("\\.js[x]?\\'" . rjsx-mode) auto-mode-alist)
+(push '("\\.json\\'" . json-mode) auto-mode-alist)
+(push '("\\.[s]?css\\'" . scss-mode) auto-mode-alist)
+(push '("\\.less\\'" . scss-mode) auto-mode-alist)
+(push '("\\.md\\'" . markdown-mode) auto-mode-alist)
 
 
-;;;
-;;; variables
-;;;
+;;; variables and faces
 
 
 ;; replace the stock Flymake warning/error indicators with a bigger one for hidpi
 ;; maxmum width is 16px according to emacs docs
-(define-fringe-bitmap 'flycheck-big-indicator
+(define-fringe-bitmap 'flymake-big-indicator
   (vector #b0000000000000000
           #b0000000000000000
           #b0000000000000000
@@ -198,23 +219,35 @@ With argument ARG, do this that many times."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(auto-dim-other-buffers-mode t)
+ '(backup-by-copying t)
+ '(blink-cursor-mode nil)
+ '(company-minimum-prefix-length 1)
  '(company-quickhelp-color-background nil)
  '(company-quickhelp-color-foreground nil)
+ '(company-quickhelp-delay 1.0)
  '(company-tooltip-align-annotations t)
  '(coverlay:mark-tested-lines nil)
  '(coverlay:untested-line-background-color "#ffe8e8")
  '(cua-mode t nil (cua-base))
- '(flymake-error-bitmap (quote (flycheck-big-indicator compilation-error)))
+ '(flymake-error-bitmap (quote (flymake-big-indicator compilation-error)))
  '(flymake-eslint-executable-name "eslint_d")
- '(flymake-stylelint-executable-args "--syntax scss")
- '(flymake-warning-bitmap (quote (flycheck-big-indicator compilation-warning)))
+ '(flymake-jslint-args (quote ("--no-color" "--no-ignore" "--stdin")))
+ '(flymake-jslint-command "eslint")
+ '(flymake-no-changes-timeout 0.5)
+ '(flymake-stylelint-executable-args "-q")
+ '(flymake-stylelint-executable-name "stylelint")
+ '(flymake-warning-bitmap (quote (flymake-big-indicator compilation-warning)))
+ '(font-use-system-font t)
  '(frame-title-format (quote ("%f")) t)
- '(fringe-mode (quote (20)) nil (fringe))
+ '(fringe-mode 20 nil (fringe))
  '(help-at-pt-display-when-idle (quote (flymake-diagnostic)) nil (help-at-pt))
  '(help-at-pt-timer-delay 0.25)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
+ '(js-chain-indent nil)
+ '(js-enabled-frameworks nil)
  '(js-switch-indent-offset 4)
+ '(js2-highlight-external-variables nil)
  '(js2-include-browser-externs nil)
  '(js2-include-jslint-declaration-externs nil)
  '(js2-include-jslint-globals nil)
@@ -226,6 +259,7 @@ With argument ARG, do this that many times."
  '(js2-strict-missing-semi-warning nil)
  '(js2-strict-var-hides-function-arg-warning nil)
  '(js2-strict-var-redeclaration-warning nil)
+ '(menu-bar-mode nil)
  '(mode-line-format
    (quote
     ("%e"
@@ -300,7 +334,10 @@ With argument ARG, do this that many times."
              (powerline-raw ":" face1
                             (quote l))
              (powerline-raw "%3c" face1
-                            (quote r)))))
+                            (quote r))
+             (funcall separator-right face1 face0)
+             (powerline-raw " " face0)
+             (powerline-fill face0 0))))
         (concat
          (powerline-render lhs)
          (powerline-fill face2
@@ -308,26 +345,37 @@ With argument ARG, do this that many times."
          (powerline-render rhs)))))))
  '(package-selected-packages
    (quote
-    (tide flymake-stylelint dockerfile-mode flymake flymake-json auto-dim-other-buffers delight company rjsx-mode xref-js2 flymake-eslint yaml-mode scss-mode request powerline markdown-mode json-mode idle-highlight-mode git-commit coverlay company-web company-quickhelp)))
- '(scroll-bar-mode nil))
+    (projectile treemacs-projectile treemacs 2048-game dockerfile-mode tide request flymake-stylelint company auto-dim-other-buffers scss-mode rjsx-mode powerline markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp)))
+ '(powerline-display-buffer-size nil)
+ '(powerline-display-hud nil)
+ '(powerline-display-mule-info nil)
+ '(powerline-gui-use-vcs-glyph t)
+ '(scroll-bar-mode nil)
+ '(sgml-basic-offset 4)
+ '(tool-bar-mode nil))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(auto-dim-other-buffers-face ((t (:background "#f8f8f8" :foreground "#808080"))))
+ '(default ((t (:inherit nil :stipple nil :background "white" :foreground "black" :inverse-video nil :box nil :strike-through nil :overline nil :underline nil :slant normal :weight light :height 132 :width normal :foundry "ADBO" :family "Source Code Pro"))))
+ '(auto-dim-other-buffers-face ((t (:background "#f4f4f4" :foreground "#808080"))))
+ '(company-preview ((t (:inherit company-tooltip-selection))))
  '(company-scrollbar-bg ((t (:background "gray95"))))
  '(company-scrollbar-fg ((t (:background "tomato"))))
  '(company-tooltip-annotation ((t (:foreground "firebrick4"))))
  '(company-tooltip-common ((t (:foreground "black"))))
  '(company-tooltip-selection ((t (:background "steel blue" :foreground "white"))))
- '(css-selector ((t nil)))
  '(flymake-warning ((t (:underline (:color "dark orange" :style wave)))))
+ '(font-lock-comment-face ((t (:inherit default :foreground "Firebrick"))))
+ '(font-lock-doc-face ((t (:inherit font-lock-comment-face))))
  '(font-lock-function-name-face ((t (:foreground "steel blue" :weight bold))))
  '(js2-error ((t nil)))
- '(js2-function-call ((t (:inherit font-lock-function-name-face :weight light))))
- '(js2-jsdoc-tag ((t (:inherit font-lock-doc-face :weight bold))))
+ '(js2-external-variable ((t nil)))
+ '(js2-function-call ((t (:inherit font-lock-function-name-face :weight normal))))
+ '(js2-jsdoc-html-tag-name ((t (:inherit js2-jsdoc-type))))
+ '(js2-jsdoc-tag ((t (:inherit font-lock-comment-face :weight bold))))
  '(js2-jsdoc-value ((t (:inherit js2-function-param))))
  '(js2-warning ((t nil)))
  '(mode-line ((t (:background "grey75" :foreground "black"))))
@@ -337,14 +385,16 @@ With argument ARG, do this that many times."
  '(powerline-inactive0 ((t (:background "gray98"))))
  '(powerline-inactive1 ((t (:background "gray98"))))
  '(powerline-inactive2 ((t (:background "gray98"))))
- '(rjsx-attr ((t (:foreground "dim gray"))))
- '(rjsx-tag ((t (:inherit rjsx-tag-bracket-face))))
- '(rjsx-tag-bracket-face ((t (:inherit default :foreground "#666666" :weight bold)))))
+ '(rjsx-attr ((t (:inherit rjsx-tag :weight normal))))
+ '(rjsx-tag ((t (:foreground "dim gray" :weight bold))))
+ '(rjsx-tag-bracket-face ((t (:inherit rjsx-tag))))
+ '(rjsx-text ((t nil)))
+ '(term ((t (:background "black" :foreground "white"))))
+ '(term-bold ((t (:background "black" :foreground "white" :weight bold))))
+ '(term-color-blue ((t (:background "DeepSkyBlue4" :foreground "DeepSkyBlue4")))))
 
 
-;;;
-;;; keyboard shortcuts
-;;;
+;;; key commands
 
 
 ;; Ctrl-Backspace -> delete a word instead of killing it
@@ -365,28 +415,30 @@ With argument ARG, do this that many times."
                 (lambda ()
                   (interactive)
                   (other-window -1)))
-;; Ctrl-a -> select entire file
+;; Ctrl-a -> select entire buffer
 (global-set-key (kbd "C-a") 'mark-whole-buffer)
-;; I like arrow keys and I dislike hitting these keystrokes by accident
-(global-set-key (kbd "C-f") nil)
-(global-set-key (kbd "C-b") nil)
-;; CUA-mode makes this superfluous for me
-(global-set-key (kbd "C-k") nil)
-
-;;;
-;;; post-init hook
-;;;
+;; use useful Flycheck key bindings in Flymake
+(define-key flymake-mode-map (kbd "C-c ! n") 'flymake-goto-next-error)
+(define-key flymake-mode-map (kbd "C-c ! p") 'flymake-goto-prev-error)
+;; keyboard command to force auto-completion
+(define-key company-mode-map (kbd "M-/") 'company-complete)
+;; I don't use this
+(global-set-key (kbd "C-x C-k") nil)
 
 
-;; a bunch of stuff I want to do upon startup but which didn't fit anywhere else
+;;; post-init
+
+
 (add-hook 'after-init-hook
           (lambda ()
-;            (set-face-background 'hl-line "#f8f8f8")
-            (global-eldoc-mode -1)
-;            (push "~/.npm-global/bin" exec-path)
-            (package-refresh-contents t) ; refresh contents on startup
-            ;; keep me as last
+            (auto-compression-mode -1)
+            (auto-encryption-mode -1)
+            (blink-cursor-mode -1)
+            (file-name-shadow-mode -1)
+            (global-auto-composition-mode -1)
+            (package-refresh-contents t)
+            ;; keep me last
             (message "startup time: %s" (emacs-init-time))))
 
-(provide '.emacs)
+(provide 'emacs)
 ;;; .emacs ends here

@@ -1,9 +1,8 @@
 ! 1920x1080x13.3in : 166dpi
 ! 2560x1440x13.3in : 221ppi
 ! 3200x1800x13.3in : 276dpi
-Xft.dpi: 221
 
-! 3200x1800 works best with font scaling set to 1.5 via gnome-tweak-tool
+Xft.dpi: 276
 
 ! 3200x1800 works best with font scaling set to 1.5 via gnome-tweak-tool
 
@@ -33,9 +32,9 @@ URxvt*color4: #6495ed
 URxvt.color10: #32a032
 URxvt*color12: #6495ed
 URxvt*depth: 32
-URxvt*font: xft:Source Code Pro:style=Light:pixelsize=30,xft:Symbola:pixelsize=30
-URxvt.boldFont: xft:Source Code Pro:style=Regular:pixelsize=30,xft:Symbola:pixelsize=30
-URxvt.italicFont: xft:Source Code Pro Light:style=italic:pixelsize=30,xft:Symbola:pixelsize=30
+URxvt*font: xft:Source Code Pro:style=Light:pixelsize=30
+URxvt.boldFont: xft:Source Code Pro:style=Regular:pixelsize=30
+URxvt.italicFont: xft:Source Code Pro Light:style=italic:pixelsize=30
 URxvt*foreground: rgb:ffff/ffff/ffff
 URxvt*letterSpace: 1
 URxvt*saveLines:655350
@@ -43,9 +42,4 @@ URxvt*scrollBar: false
 URxvt*scrollWithTtyOutput: false
 URxvt*skipScroll: true
 
-Xcursor.size: 32
-
-Emacs*MenuBar: false
-Emacs*ScrollBar: false
-Emacs*ToolBar: false
-Emacs*font: Source Code Pro Light-16
+Xcursor.size: 48
