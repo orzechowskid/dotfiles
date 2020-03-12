@@ -1,5 +1,5 @@
 #!/bin/bash
 
-if [ -d "$HOME/.npm-global/bin" ] ; then
-	PATH="$HOME/.npm-global/bin:$PATH"
-fi
+[[ "$(command -v node)" ]] && {
+  export PATH=$PATH:$(npm get prefix)/bin
+}
