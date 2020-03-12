@@ -8,3 +8,4 @@ xrdb -merge $HOME/.Xresources
 gsettings set org.gnome.desktop.background picture-options none
 gsettings set org.gnome.desktop.background primary-color "#082f3e"
 
+battery-monitor &
