@@ -16,6 +16,8 @@
 (require 'package)
 (push '("melpa" . "https://melpa.org/packages/") package-archives)
 
+(push "~/.emacs.d/elisp" load-path)
+
 ;; these things are used by multiple major modes and/or get configured before any
 ;; buffers are opened, so they're not good candidates for autoload
 
@@ -31,8 +33,8 @@
 
 ;; these guys, however...
 
-(autoload 'coverlay-mode "coverlay"
-  "Use the coverlay package to provide 'coverlay-mode on-demand."
+(autoload 'coverlay-minor-mode "coverlay"
+  "Use the coverlay package to provide 'coverlay-minor-mode on-demand."
   t)
 (autoload 'flymake-eslint-enable "flymake-eslint"
   "Use the flymake-eslint package to provide 'flymake-eslint-enable on-demand."
@@ -143,6 +145,9 @@ With argument ARG, do this that many times."
   ;; turn on coverage mode if not a test file
   (unless (string-match-p "test.js[x]?\\'" buffer-file-name)
     (coverlay-minor-mode t)
+    (setq coverlay:base-path
+                (expand-file-name
+                 (locate-dominating-file (buffer-file-name) "coverage")))
     (unless (bound-and-true-p coverlay--loaded-filepath)
       ;; load the closest coverage file if one hasn't been loaded yet
       (coverlay-watch-file (concat (locate-dominating-file buffer-file-name "coverage")
@@ -228,18 +233,19 @@ With argument ARG, do this that many times."
  '(coverlay:mark-tested-lines nil)
  '(coverlay:untested-line-background-color "#ffe8e8")
  '(cua-mode t nil (cua-base))
- '(flymake-error-bitmap (quote (flymake-big-indicator compilation-error)))
- '(flymake-eslint-executable-name "eslint_d")
- '(flymake-jslint-args (quote ("--no-color" "--no-ignore" "--stdin")))
+ '(flymake-error-bitmap '(flymake-big-indicator compilation-error))
+ '(flymake-eslint-executable-args "\"-f unix\"")
+ '(flymake-eslint-executable-name "eslint")
+ '(flymake-jslint-args '("--no-color" "--no-ignore" "--stdin"))
  '(flymake-jslint-command "eslint")
  '(flymake-no-changes-timeout 0.5)
  '(flymake-stylelint-executable-args "-q")
  '(flymake-stylelint-executable-name "stylelint")
- '(flymake-warning-bitmap (quote (flymake-big-indicator compilation-warning)))
+ '(flymake-warning-bitmap '(flymake-big-indicator compilation-warning))
  '(font-use-system-font nil)
- '(frame-title-format (quote ("%f")) t)
+ '(frame-title-format '("%f") t)
  '(fringe-mode 20 nil (fringe))
- '(help-at-pt-display-when-idle (quote (flymake-diagnostic)) nil (help-at-pt))
+ '(help-at-pt-display-when-idle '(flymake-diagnostic) nil (help-at-pt))
  '(help-at-pt-timer-delay 0.25)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
@@ -260,32 +266,21 @@ With argument ARG, do this that many times."
  '(js2-strict-var-redeclaration-warning nil)
  '(menu-bar-mode nil)
  '(mode-line-format
-   (quote
-    ("%e"
+   '("%e"
      (:eval
       (let*
           ((active
             (powerline-selected-window-active))
            (mode-line-buffer-id
-            (if active
-                (quote mode-line-buffer-id)
-              (quote mode-line-buffer-id-inactive)))
+            (if active 'mode-line-buffer-id 'mode-line-buffer-id-inactive))
            (mode-line
-            (if active
-                (quote mode-line)
-              (quote mode-line-inactive)))
+            (if active 'mode-line 'mode-line-inactive))
            (face0
-            (if active
-                (quote powerline-active0)
-              (quote powerline-inactive0)))
+            (if active 'powerline-active0 'powerline-inactive0))
            (face1
-            (if active
-                (quote powerline-active1)
-              (quote powerline-inactive1)))
+            (if active 'powerline-active1 'powerline-inactive1))
            (face2
-            (if active
-                (quote powerline-active2)
-              (quote powerline-inactive2)))
+            (if active 'powerline-active2 'powerline-inactive2))
            (separator-left
             (intern
              (format "powerline-%s-%s"
@@ -298,42 +293,31 @@ With argument ARG, do this that many times."
                      (cdr powerline-default-separator-dir))))
            (lhs
             (list
-             (powerline-raw "%*" face0
-                            (quote l))
+             (powerline-raw "%*" face0 'l)
              (powerline-buffer-id
-              (\`
-               (mode-line-buffer-id
-                (\, face0)))
-              (quote l))
+              `(mode-line-buffer-id ,face0)
+              'l)
              (powerline-raw " " face0)
              (funcall separator-left face0 face1)
              (powerline-raw " " face1)
              (powerline-major-mode face1)
              (powerline-process face1)
-             (powerline-minor-modes face1
-                                    (quote l))
-             (powerline-narrow face1
-                               (quote l))
+             (powerline-minor-modes face1 'l)
+             (powerline-narrow face1 'l)
              (powerline-raw " " face1)
              (funcall separator-left face1 face2)
-             (powerline-vc face2
-                           (quote r))))
+             (powerline-vc face2 'r)))
            (rhs
             (list
-             (powerline-raw global-mode-string face2
-                            (quote r))
+             (powerline-raw global-mode-string face2 'r)
              (funcall separator-right face2 face1)
              (unless window-system
                (powerline-raw
                 (char-to-string 57505)
-                face1
-                (quote l)))
-             (powerline-raw "%4l" face1
-                            (quote l))
-             (powerline-raw ":" face1
-                            (quote l))
-             (powerline-raw "%3c" face1
-                            (quote r))
+                face1 'l))
+             (powerline-raw "%4l" face1 'l)
+             (powerline-raw ":" face1 'l)
+             (powerline-raw "%3c" face1 'r)
              (funcall separator-right face1 face0)
              (powerline-raw " " face0)
              (powerline-fill face0 0))))
@@ -341,10 +325,9 @@ With argument ARG, do this that many times."
          (powerline-render lhs)
          (powerline-fill face2
                          (powerline-width rhs))
-         (powerline-render rhs)))))))
+         (powerline-render rhs))))))
  '(package-selected-packages
-   (quote
-    (projectile treemacs-projectile treemacs 2048-game dockerfile-mode tide request flymake-stylelint company auto-dim-other-buffers scss-mode rjsx-mode powerline markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp)))
+   '(web-mode js-doc projectile treemacs-projectile treemacs 2048-game dockerfile-mode tide request flymake-stylelint company auto-dim-other-buffers scss-mode rjsx-mode powerline markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
  '(powerline-display-buffer-size nil)
  '(powerline-display-hud nil)
  '(powerline-display-mule-info nil)
