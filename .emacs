@@ -110,7 +110,11 @@ With argument ARG, do this that many times."
 ;; shorten dynamically-generated Flymake minor-mode string
 (advice-add 'flymake--mode-line-format :filter-return
             (lambda (&rest return-value)
-              (setf (seq-elt (car return-value) 0) " ✓")
+              (setf
+               (seq-elt
+                (car return-value)
+                0)
+               " ✓")
               return-value))
 
 ;; header- and mode-line rendering function
@@ -274,38 +278,20 @@ With argument ARG, do this that many times."
  '(font-use-system-font nil)
  '(frame-title-format '("%f") t)
  '(fringe-mode '(24 . 0) nil (fringe))
- '(mode-line-format
-    '((:eval
-    (status-line-render
-     (format-mode-line
-      (list
-       " "
-       mode-name
-       minor-mode-alist))
-     (if
-         (stringp vc-mode)
-         (format
-          "%s%s"
-          (char-to-string #xe0a0)
-          (format-mode-line '(vc-mode vc-mode)))
-       "")))))
  '(header-line-format
    '((:eval
       (status-line-render
-       (format
-        " %s %s"
-        (if
-            (and
-             (buffer-file-name)
-             (buffer-modified-p))
-            " *" "  ")
-        (or
-         (buffer-file-name)
-         (buffer-name)))
-       (format
-        "%-8s"
-        (format-mode-line
-         "%l:%c"))))))
+       (format " %s %s"
+               (if
+                   (and
+                    (buffer-file-name)
+                    (buffer-modified-p))
+                   " *" "  ")
+               (or
+                (buffer-file-name)
+                (buffer-name)))
+       (format "%-8s"
+               (format-mode-line "%l:%c"))))) t)
  '(help-at-pt-display-when-idle '(flymake-diagnostic) nil (help-at-pt))
  '(help-at-pt-timer-delay 0.25)
  '(indent-tabs-mode nil)
@@ -326,17 +312,29 @@ With argument ARG, do this that many times."
  '(js2-strict-var-hides-function-arg-warning nil)
  '(js2-strict-var-redeclaration-warning nil)
  '(menu-bar-mode nil)
+ '(mode-line-format
+   '((:eval
+      (status-line-render
+       ;; left side
+       (let ((left-string (format-mode-line
+                           (list " " mode-name minor-mode-alist))))
+         (set-text-properties 0 (- (length left-string) 1) nil left-string)
+         (format "%s" left-string))
+       ;; right side
+       (if (stringp vc-mode)
+           (format "%s%s"
+                   (char-to-string 57504)
+                   (format-mode-line
+                    '(vc-mode vc-mode)))
+         "")))))
  '(package-selected-packages
    '(web-mode js-doc projectile treemacs-projectile treemacs 2048-game dockerfile-mode tide request flymake-stylelint company scss-mode rjsx-mode powerline markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
- '(powerline-display-buffer-size nil)
- '(powerline-display-hud nil)
- '(powerline-display-mule-info nil)
- '(powerline-gui-use-vcs-glyph t)
  '(scroll-bar-mode nil)
  '(sgml-basic-offset 4)
  '(tool-bar-mode nil)
  '(uniquify-buffer-name-style 'forward nil (uniquify))
- '(widget-image-enable nil))
+ '(widget-image-enable nil)
+ '(window-min-height 4))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
@@ -361,14 +359,9 @@ With argument ARG, do this that many times."
  '(js2-jsdoc-tag ((t (:inherit font-lock-comment-face :weight bold))))
  '(js2-jsdoc-value ((t (:inherit js2-function-param))))
  '(js2-warning ((t nil)))
- '(mode-line ((t (:background "bisque1" :foreground "gray37"))))
- '(mode-line-inactive ((t (:inherit mode-line :inverse-video t))))
- '(powerline-active0 ((t (:background "tomato" :foreground "white" :weight bold))))
- '(powerline-active1 ((t (:background "gray95"))))
- '(powerline-active2 ((t (:background "gray95"))))
- '(powerline-inactive0 ((t (:background "white"))))
- '(powerline-inactive1 ((t (:background "white"))))
- '(powerline-inactive2 ((t (:background "white"))))
+ '(mode-line ((t (:background "AntiqueWhite3" :foreground "gray37"))))
+ '(mode-line-highlight ((t nil)))
+ '(mode-line-inactive ((t (:background "gray95" :foreground "gray22"))))
  '(region ((t (:extend t :background "gray90" :distant-foreground "gtk_selection_fg_color"))))
  '(rjsx-attr ((t (:inherit rjsx-tag :weight normal))))
  '(rjsx-tag ((t (:foreground "dim gray" :weight bold))))
@@ -418,8 +411,6 @@ With argument ARG, do this that many times."
 
 (add-hook 'after-init-hook
           (lambda ()
-            ;; make double-sure that the system terminal font doesn't override what's specified above
-;            (define-key special-event-map [config-changed-event] 'ignore)
             (auto-compression-mode -1)
             (auto-encryption-mode -1)
             (blink-cursor-mode -1)
