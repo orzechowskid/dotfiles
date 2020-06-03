@@ -18,6 +18,7 @@
 
 (push "~/.emacs.d/elisp" load-path)
 
+
 ;; these things are used by multiple major modes and/or get configured before any
 ;; buffers are opened, so they're not good candidates for autoload
 
@@ -28,8 +29,8 @@
 (require 'delight)
 ;; linting
 (require 'flymake)
-;; mode line customization
-(require 'powerline)
+;; change how files with the same basename are differentiated
+(require 'uniquify)
 
 ;; these guys, however...
 
@@ -68,6 +69,11 @@ With argument ARG, do this that many times."
   (interactive "p")
   (delete-word (- arg)))
 
+(defun close-buffer ()
+  "Closes current buffer without prompting."
+  (interactive)
+  (kill-buffer (current-buffer)))
+
 (defun delete-word (arg)
   "Delete characters forward until encountering the end of a word.
 With argument ARG, do this that many times."
@@ -91,26 +97,31 @@ With argument ARG, do this that many times."
                     (display-local-help)
                   (funcall oldfn doc-msg)))))
 
-;; tell powerline to use the modifications made by delight
-(advice-add 'powerline-major-mode :around
-            (lambda (original-fn &rest args)
-              (let ((inhibit-mode-name-delight nil))
-                (funcall original-fn args))))
 ;; shorten some major-mode modeline strings
 (delight '((emacs-lisp-mode "ELisp")))
+
 ;; remove some minor-mode modeline strings
 (delight '((subword-mode nil "subword")
            (company-mode nil "company")
            (tide-mode nil "tide")
            (coverlay-minor-mode nil "coverlay")
-           (eldoc-mode nil "eldoc")
-           (auto-dim-other-buffers-mode nil "auto-dim-other-buffers")))
+           (eldoc-mode nil "eldoc")))
+
 ;; shorten dynamically-generated Flymake minor-mode string
 (advice-add 'flymake--mode-line-format :filter-return
             (lambda (&rest return-value)
-              (setf (seq-elt (car return-value) 0) "✓")
+              (setf (seq-elt (car return-value) 0) " ✓")
               return-value))
 
+;; header- and mode-line rendering function
+(defun status-line-render (left-content right-content)
+  "Render LEFT-CONTENT and RIGHT-CONTENT, appropriately justified."
+  (let ((available-width (- (window-width) (length left-content))))
+    (format
+     (format "%%s %%%ds" available-width)
+     left-content
+     right-content)))
+ 
 
 ;;; mode hooks and config
 
@@ -177,6 +188,7 @@ With argument ARG, do this that many times."
   (face-remap-add-relative 'default '((:background "black") (:foreground "white")))
   (subword-mode nil))
 
+;; run custom functions when some major modes are entered
 (add-hook 'scss-mode-hook 'my-css-mode-hook)
 (add-hook 'emacs-lisp-mode-hook 'common-lisp-mode-hook)
 (add-hook 'rjsx-mode-hook 'my-javascript-mode-hook)
@@ -195,6 +207,24 @@ With argument ARG, do this that many times."
 
 ;;; variables and faces
 
+
+;; HTML codes for the Source Code Pro glyphs to use as fringe indicators
+(set-display-table-slot standard-display-table 'truncation 8230)
+(set-display-table-slot standard-display-table 'wrap 8601)
+;; transparent background-color for fringe
+(set-face-attribute 'fringe nil :background nil)
+;; hide fringe line-wrap bitmap
+(assoc-delete-all 'continuation fringe-indicator-alist)
+;; frame defaults
+(setq-default default-frame-alist
+              (list
+               '(undecorated . t)
+               '(vertical-scroll-bars . nil)
+               '(internal-border-width . 20)
+               '(drag-internal-border . t)
+               '(font . "Source Code Pro Light 12")))
+(set-frame-parameter (selected-frame)
+                     'internal-border-width 20)
 
 ;; replace the stock Flymake warning/error indicators with a bigger one for hidpi
 ;; maxmum width is 16px according to emacs docs
@@ -222,7 +252,6 @@ With argument ARG, do this that many times."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(auto-dim-other-buffers-mode t)
  '(backup-by-copying t)
  '(blink-cursor-mode nil)
  '(company-minimum-prefix-length 1)
@@ -244,7 +273,39 @@ With argument ARG, do this that many times."
  '(flymake-warning-bitmap '(flymake-big-indicator compilation-warning))
  '(font-use-system-font nil)
  '(frame-title-format '("%f") t)
- '(fringe-mode 20 nil (fringe))
+ '(fringe-mode '(24 . 0) nil (fringe))
+ '(mode-line-format
+    '((:eval
+    (status-line-render
+     (format-mode-line
+      (list
+       " "
+       mode-name
+       minor-mode-alist))
+     (if
+         (stringp vc-mode)
+         (format
+          "%s%s"
+          (char-to-string #xe0a0)
+          (format-mode-line '(vc-mode vc-mode)))
+       "")))))
+ '(header-line-format
+   '((:eval
+      (status-line-render
+       (format
+        " %s %s"
+        (if
+            (and
+             (buffer-file-name)
+             (buffer-modified-p))
+            " *" "  ")
+        (or
+         (buffer-file-name)
+         (buffer-name)))
+       (format
+        "%-8s"
+        (format-mode-line
+         "%l:%c"))))))
  '(help-at-pt-display-when-idle '(flymake-diagnostic) nil (help-at-pt))
  '(help-at-pt-timer-delay 0.25)
  '(indent-tabs-mode nil)
@@ -265,87 +326,26 @@ With argument ARG, do this that many times."
  '(js2-strict-var-hides-function-arg-warning nil)
  '(js2-strict-var-redeclaration-warning nil)
  '(menu-bar-mode nil)
- '(mode-line-format
-   '("%e"
-     (:eval
-      (let*
-          ((active
-            (powerline-selected-window-active))
-           (mode-line-buffer-id
-            (if active 'mode-line-buffer-id 'mode-line-buffer-id-inactive))
-           (mode-line
-            (if active 'mode-line 'mode-line-inactive))
-           (face0
-            (if active 'powerline-active0 'powerline-inactive0))
-           (face1
-            (if active 'powerline-active1 'powerline-inactive1))
-           (face2
-            (if active 'powerline-active2 'powerline-inactive2))
-           (separator-left
-            (intern
-             (format "powerline-%s-%s"
-                     (powerline-current-separator)
-                     (car powerline-default-separator-dir))))
-           (separator-right
-            (intern
-             (format "powerline-%s-%s"
-                     (powerline-current-separator)
-                     (cdr powerline-default-separator-dir))))
-           (lhs
-            (list
-             (powerline-raw "%*" face0 'l)
-             (powerline-buffer-id
-              `(mode-line-buffer-id ,face0)
-              'l)
-             (powerline-raw " " face0)
-             (funcall separator-left face0 face1)
-             (powerline-raw " " face1)
-             (powerline-major-mode face1)
-             (powerline-process face1)
-             (powerline-minor-modes face1 'l)
-             (powerline-narrow face1 'l)
-             (powerline-raw " " face1)
-             (funcall separator-left face1 face2)
-             (powerline-vc face2 'r)))
-           (rhs
-            (list
-             (powerline-raw global-mode-string face2 'r)
-             (funcall separator-right face2 face1)
-             (unless window-system
-               (powerline-raw
-                (char-to-string 57505)
-                face1 'l))
-             (powerline-raw "%4l" face1 'l)
-             (powerline-raw ":" face1 'l)
-             (powerline-raw "%3c" face1 'r)
-             (funcall separator-right face1 face0)
-             (powerline-raw " " face0)
-             (powerline-fill face0 0))))
-        (concat
-         (powerline-render lhs)
-         (powerline-fill face2
-                         (powerline-width rhs))
-         (powerline-render rhs))))))
  '(package-selected-packages
-   '(web-mode js-doc projectile treemacs-projectile treemacs 2048-game dockerfile-mode tide request flymake-stylelint company auto-dim-other-buffers scss-mode rjsx-mode powerline markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
+   '(web-mode js-doc projectile treemacs-projectile treemacs 2048-game dockerfile-mode tide request flymake-stylelint company scss-mode rjsx-mode powerline markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
  '(powerline-display-buffer-size nil)
  '(powerline-display-hud nil)
  '(powerline-display-mule-info nil)
  '(powerline-gui-use-vcs-glyph t)
  '(scroll-bar-mode nil)
  '(sgml-basic-offset 4)
- '(tool-bar-mode nil))
+ '(tool-bar-mode nil)
+ '(uniquify-buffer-name-style 'forward nil (uniquify))
+ '(widget-image-enable nil))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(default ((t (:inherit nil :stipple nil :background "white" :foreground "black" :inverse-video nil :box nil :strike-through nil :overline nil :underline nil :slant normal :weight light :height 120 :width normal :foundry "ADBO" :family "Source Code Pro"))))
- '(auto-dim-other-buffers-face ((t (:background "#f4f4f4" :foreground "#808080"))))
  '(company-preview ((t (:inherit company-tooltip-selection))))
  '(company-scrollbar-bg ((t (:background "gray95"))))
- '(company-scrollbar-fg ((t (:background "tomato"))))
+ '(company-scrollbar-fg ((t (:background "#808080"))))
  '(company-tooltip-annotation ((t (:foreground "firebrick4"))))
  '(company-tooltip-common ((t (:foreground "black"))))
  '(company-tooltip-selection ((t (:background "steel blue" :foreground "white"))))
@@ -353,6 +353,7 @@ With argument ARG, do this that many times."
  '(font-lock-comment-face ((t (:inherit default :foreground "Firebrick"))))
  '(font-lock-doc-face ((t (:inherit font-lock-comment-face))))
  '(font-lock-function-name-face ((t (:foreground "steel blue" :weight bold))))
+ '(header-line ((t (:inherit mode-line :background "AntiqueWhite4" :foreground "white" :box nil))))
  '(js2-error ((t nil)))
  '(js2-external-variable ((t nil)))
  '(js2-function-call ((t (:inherit font-lock-function-name-face :weight normal))))
@@ -360,13 +361,15 @@ With argument ARG, do this that many times."
  '(js2-jsdoc-tag ((t (:inherit font-lock-comment-face :weight bold))))
  '(js2-jsdoc-value ((t (:inherit js2-function-param))))
  '(js2-warning ((t nil)))
- '(mode-line ((t (:background "grey75" :foreground "black"))))
+ '(mode-line ((t (:background "bisque1" :foreground "gray37"))))
+ '(mode-line-inactive ((t (:inherit mode-line :inverse-video t))))
  '(powerline-active0 ((t (:background "tomato" :foreground "white" :weight bold))))
  '(powerline-active1 ((t (:background "gray95"))))
  '(powerline-active2 ((t (:background "gray95"))))
- '(powerline-inactive0 ((t (:background "gray98"))))
- '(powerline-inactive1 ((t (:background "gray98"))))
- '(powerline-inactive2 ((t (:background "gray98"))))
+ '(powerline-inactive0 ((t (:background "white"))))
+ '(powerline-inactive1 ((t (:background "white"))))
+ '(powerline-inactive2 ((t (:background "white"))))
+ '(region ((t (:extend t :background "gray90" :distant-foreground "gtk_selection_fg_color"))))
  '(rjsx-attr ((t (:inherit rjsx-tag :weight normal))))
  '(rjsx-tag ((t (:foreground "dim gray" :weight bold))))
  '(rjsx-tag-bracket-face ((t (:inherit rjsx-tag))))
@@ -406,6 +409,8 @@ With argument ARG, do this that many times."
 (define-key company-mode-map (kbd "M-/") 'company-complete)
 ;; I don't use this
 (global-set-key (kbd "C-x C-k") nil)
+;; Ctrl-w -> close buffer.  CUA-ish
+(global-set-key (kbd "C-w") 'close-buffer)
 
 
 ;;; post-init
@@ -414,7 +419,7 @@ With argument ARG, do this that many times."
 (add-hook 'after-init-hook
           (lambda ()
             ;; make double-sure that the system terminal font doesn't override what's specified above
-            (define-key special-event-map [config-changed-event] 'ignore)
+;            (define-key special-event-map [config-changed-event] 'ignore)
             (auto-compression-mode -1)
             (auto-encryption-mode -1)
             (blink-cursor-mode -1)
