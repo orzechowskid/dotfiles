@@ -49,9 +49,9 @@
 (autoload 'markdown-mode "markdown-mode"
   "Use the markdown-mode package to provide 'markdown-mode on-demand."
   t)
-(autoload 'rjsx-mode "rjsx-mode"
-  "Use the rjsx-mode package to provide 'rjsx-mode on-demand."
-  t)
+;(autoload 'rjsx-mode "rjsx-mode"
+;  "Use the rjsx-mode package to provide 'rjsx-mode on-demand."
+;  t)
 (autoload 'scss-mode "scss-mode"
   "Use the scss-mode package to provide 'scss-mode on-demand."
   t)
@@ -195,14 +195,14 @@ With argument ARG, do this that many times."
 ;; run custom functions when some major modes are entered
 (add-hook 'scss-mode-hook 'my-css-mode-hook)
 (add-hook 'emacs-lisp-mode-hook 'common-lisp-mode-hook)
-(add-hook 'rjsx-mode-hook 'my-javascript-mode-hook)
+(add-hook 'js-mode-hook 'my-javascript-mode-hook)
 (add-hook 'json-mode-hook 'my-json-mode-hook)
 (add-hook 'lisp-mode-hook 'common-lisp-mode-hook)
 (add-hook 'term-mode-hook 'my-terminal-mode-hook)
 (add-hook 'flymake-mode-hook 'my-flymake-mode-hook)
 
 ;; associate some major modes with some file extensions
-(push '("\\.js[x]?\\'" . rjsx-mode) auto-mode-alist)
+(push '("\\.js[x]?\\'" . js-mode) auto-mode-alist)
 (push '("\\.json\\'" . json-mode) auto-mode-alist)
 (push '("\\.[s]?css\\'" . scss-mode) auto-mode-alist)
 (push '("\\.less\\'" . scss-mode) auto-mode-alist)
