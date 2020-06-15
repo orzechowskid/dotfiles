@@ -49,9 +49,6 @@
 (autoload 'markdown-mode "markdown-mode"
   "Use the markdown-mode package to provide 'markdown-mode on-demand."
   t)
-;(autoload 'rjsx-mode "rjsx-mode"
-;  "Use the rjsx-mode package to provide 'rjsx-mode on-demand."
-;  t)
 (autoload 'scss-mode "scss-mode"
   "Use the scss-mode package to provide 'scss-mode on-demand."
   t)
@@ -144,6 +141,8 @@ With argument ARG, do this that many times."
 
 (defun my-javascript-mode-hook ()
   "Do some things when opening JavaScript files."
+  ;; assume JSX even if you don't see an import/require of React
+  (js-jsx-enable)
   ;; enable code analysis
   (tide-setup)
   ;; enable camelCase-aware code navigation
@@ -159,14 +158,21 @@ With argument ARG, do this that many times."
   (add-hook 'after-save-hook 'eslint-fix-buffer t t)
   ;; turn on coverage mode if not a test file
   (unless (string-match-p "test.js[x]?\\'" buffer-file-name)
-    (coverlay-minor-mode t)
-    (setq coverlay:base-path
-                (expand-file-name
-                 (locate-dominating-file (buffer-file-name) "coverage")))
-    (unless (bound-and-true-p coverlay--loaded-filepath)
-      ;; load the closest coverage file if one hasn't been loaded yet
-      (coverlay-watch-file (concat (locate-dominating-file buffer-file-name "coverage")
-                                   "coverage/lcov.info")))))
+    (when-let
+        ((coverage-dir
+          (locate-dominating-file
+           (buffer-file-name)
+           "coverage")))
+      (coverlay-minor-mode t)
+      (setq coverlay:base-path
+            (expand-file-name coverage-dir "coverage"))
+      (unless
+          (bound-and-true-p coverlay--loaded-filepath)
+        ;; load the closest coverage file if one hasn't been loaded yet
+        (coverlay-watch-file
+         (concat
+          (locate-dominating-file buffer-file-name "coverage")
+          "coverage/lcov.info"))))))
 
 (defun my-json-mode-hook ()
   "Do some things when opening JSON files."
@@ -266,6 +272,7 @@ With argument ARG, do this that many times."
  '(coverlay:mark-tested-lines nil)
  '(coverlay:untested-line-background-color "#ffe8e8")
  '(cua-mode t nil (cua-base))
+ '(debug-on-error t)
  '(flymake-error-bitmap '(flymake-big-indicator compilation-error))
  '(flymake-eslint-executable-args "\"-f unix\"")
  '(flymake-eslint-executable-name "eslint")
@@ -315,26 +322,30 @@ With argument ARG, do this that many times."
  '(mode-line-format
    '((:eval
       (status-line-render
-       ;; left side
-       (let ((left-string (format-mode-line
-                           (list " " mode-name minor-mode-alist))))
-         (set-text-properties 0 (- (length left-string) 1) nil left-string)
+       (let
+           ((left-string
+             (format-mode-line
+              (list " " mode-name minor-mode-alist))))
+         (set-text-properties 0
+                              (-
+                               (length left-string)
+                               1)
+                              nil left-string)
          (format "%s" left-string))
-       ;; right side
-       (if (stringp vc-mode)
+       (if
+           (stringp vc-mode)
            (format "%s%s"
                    (char-to-string 57504)
                    (format-mode-line
                     '(vc-mode vc-mode)))
          "")))))
  '(package-selected-packages
-   '(web-mode js-doc projectile treemacs-projectile treemacs 2048-game dockerfile-mode tide request flymake-stylelint company scss-mode rjsx-mode powerline markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
+   '(flymake-json editorconfig dotenv-mode web-mode js-doc projectile treemacs-projectile treemacs 2048-game dockerfile-mode tide request flymake-stylelint company scss-mode markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
  '(scroll-bar-mode nil)
  '(sgml-basic-offset 4)
  '(tool-bar-mode nil)
  '(uniquify-buffer-name-style 'forward nil (uniquify))
- '(widget-image-enable nil)
- '(window-min-height 4))
+ '(widget-image-enable nil))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
@@ -363,10 +374,6 @@ With argument ARG, do this that many times."
  '(mode-line-highlight ((t nil)))
  '(mode-line-inactive ((t (:background "gray95" :foreground "gray22"))))
  '(region ((t (:extend t :background "gray90" :distant-foreground "gtk_selection_fg_color"))))
- '(rjsx-attr ((t (:inherit rjsx-tag :weight normal))))
- '(rjsx-tag ((t (:foreground "dim gray" :weight bold))))
- '(rjsx-tag-bracket-face ((t (:inherit rjsx-tag))))
- '(rjsx-text ((t nil)))
  '(term ((t (:background "black" :foreground "white"))))
  '(term-bold ((t (:background "black" :foreground "white" :weight bold))))
  '(term-color-blue ((t (:background "DeepSkyBlue4" :foreground "DeepSkyBlue4")))))
