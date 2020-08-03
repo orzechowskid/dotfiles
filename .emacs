@@ -25,10 +25,15 @@
 ;; code completion
 (require 'company)
 (require 'company-quickhelp)
+;; code analysis
+(require 'lsp)
+(require 'lsp-clients)
 ;; mode line cleaner-upper
 (require 'delight)
 ;; linting
 (require 'flymake)
+;; tree-navigation mode
+(require 'treemacs-projectile)
 ;; change how files with the same basename are differentiated
 (require 'uniquify)
 
@@ -49,14 +54,8 @@
 (autoload 'markdown-mode "markdown-mode"
   "Use the markdown-mode package to provide 'markdown-mode on-demand."
   t)
-;(autoload 'rjsx-mode "rjsx-mode"
-;  "Use the rjsx-mode package to provide 'rjsx-mode on-demand."
-;  t)
 (autoload 'scss-mode "scss-mode"
   "Use the scss-mode package to provide 'scss-mode on-demand."
-  t)
-(autoload 'tide-setup "tide"
-  "Use the tide package to provide 'tide-setup on-demand."
   t)
 
 
@@ -89,6 +88,31 @@ With argument ARG, do this that many times."
         (revert-buffer t t t))
     (message "eslint_d not found")))
 
+(defun ignore-file-p (name path)
+  "Tell projectile to ignore some stuff based on the NAME and PATH of a file in the project."
+  (or (string= name "node_modules")
+      (string= name ".git")
+      (string= name "coverage")))
+
+(defun noop ()
+  "Does nothing.  Use as a keyboard-shortcut handler instead of NIL to suppress the '<foo> is undefined' message."
+  (interactive))
+
+;; header- and mode-line rendering function
+(defun status-line-render (left-content right-content)
+  "Render LEFT-CONTENT and RIGHT-CONTENT, appropriately justified."
+  (let* ((left-str (format-mode-line left-content))
+         (right-str (format-mode-line right-content))
+         (available-width
+          (- (window-total-width)
+             (length left-str)
+             (length right-str)
+             2))) ; left and right padding
+    (format " %s%s%s "
+            (propertize left-str 'face nil)
+            (format (format "%%%ds" available-width) "")
+            (propertize right-str 'face nil))))
+
 ;; prefer contents of help-at-point (e.g., Flymake) over whatever eldoc outputs
 (advice-add 'eldoc-message :around
             (lambda (oldfn doc-msg)
@@ -103,7 +127,8 @@ With argument ARG, do this that many times."
 ;; remove some minor-mode modeline strings
 (delight '((subword-mode nil "subword")
            (company-mode nil "company")
-           (tide-mode nil "tide")
+           (lsp-mode nil "lsp")
+           (projectile-mode nil t)
            (coverlay-minor-mode nil "coverlay")
            (eldoc-mode nil "eldoc")))
 
@@ -117,15 +142,6 @@ With argument ARG, do this that many times."
                " ✓")
               return-value))
 
-;; header- and mode-line rendering function
-(defun status-line-render (left-content right-content)
-  "Render LEFT-CONTENT and RIGHT-CONTENT, appropriately justified."
-  (let ((available-width (- (window-width) (length left-content))))
-    (format
-     (format "%%s %%%ds" available-width)
-     left-content
-     right-content)))
- 
 
 ;;; mode hooks and config
 
@@ -144,59 +160,103 @@ With argument ARG, do this that many times."
 
 (defun my-javascript-mode-hook ()
   "Do some things when opening JavaScript files."
-  ;; enable code analysis
-  (tide-setup)
-  ;; enable camelCase-aware code navigation
-  (subword-mode t)
-  ;; enable linting
+;;  ;; run `eslint --fix' upon save
+;;  (add-hook 'after-save-hook 'eslint-fix-buffer t t)
+
+  ;; assume JSX even if you don't see an import/require of React
+  (js-jsx-enable)
+
+  ;; treat this file as part of a larger project (when applicable)
+  (projectile-mode)
+
+  ;; code analysis via a language server
+  (lsp)
+
+  ;; add an eslint backend to flymake
   (flymake-eslint-enable)
   (setq flymake-eslint-project-root (locate-dominating-file buffer-file-name ".eslintrc.js"))
-  ;; enable code-completion
+
+  ;; code-completion
   (company-mode t)
-  ;; enable documentation
-  (eldoc-mode t)
-  ;; run `eslint --fix' upon save
-  (add-hook 'after-save-hook 'eslint-fix-buffer t t)
+  (company-quickhelp-mode t)
+
+  ;; camelCase-aware navigation
+  (subword-mode t)
+
   ;; turn on coverage mode if not a test file
   (unless (string-match-p "test.js[x]?\\'" buffer-file-name)
-    (coverlay-minor-mode t)
-    (setq coverlay:base-path
-                (expand-file-name
-                 (locate-dominating-file (buffer-file-name) "coverage")))
-    (unless (bound-and-true-p coverlay--loaded-filepath)
-      ;; load the closest coverage file if one hasn't been loaded yet
-      (coverlay-watch-file (concat (locate-dominating-file buffer-file-name "coverage")
-                                   "coverage/lcov.info")))))
+    (when-let
+        ((coverage-dir
+          (locate-dominating-file
+           (buffer-file-name)
+           "coverage")))
+      (coverlay-minor-mode t)
+      (setq coverlay:base-path
+            (expand-file-name coverage-dir "coverage"))
+      (unless
+          (bound-and-true-p coverlay--loaded-filepath)
+        ;; load the closest coverage file if one hasn't been loaded yet
+        (coverlay-watch-file
+         (concat
+          (locate-dominating-file buffer-file-name "coverage")
+          "coverage/lcov.info")))))
+
+  ;; I want the key command in the xref map instead of this one
+  (define-key js-mode-map (kbd "M-.") nil))
 
 (defun my-json-mode-hook ()
   "Do some things when opening JSON files."
   (make-local-variable 'js-indent-level)
-  (set 'js-indent-level 2)
+
   ;; enable camelCase-aware navigation
   (subword-mode t))
 
+(defun my-js-json-mode-hook ()
+  "Emacs' json major mode descends from its js major mode, so the hook situation is all messed up without something like this."
+  (if (string-match-p "json\\'" (buffer-file-name))
+      (my-json-mode-hook)
+    (my-javascript-mode-hook)))
+
 (defun common-lisp-mode-hook ()
   "Do some things when entering a Lisp mode."
+
   ;; enable code-completion mode
   (company-mode t)
   (company-quickhelp-mode t)
+
   ;; enable documentation in echo area
   (eldoc-mode t)
+
   ;; linter (most of the time)
   (when (not (string= (buffer-name) "*scratch*"))
     (flymake-mode t)))
 
 (defun my-terminal-mode-hook ()
   "Do some things when opening a terminal."
+
   ;; for terminals only, we want the default face to be reversed
   (face-remap-add-relative 'default '((:background "black") (:foreground "white")))
-  (subword-mode nil))
+
+  ;; our terminal doesn't need a mode- or header-line
+  (setq mode-line-format nil)
+  (setq header-line-format nil) ; why doesn't this work?
+
+  ;; it doesn't need fringes either
+  ;; ...but all of the fringe-set functions either don't work or apply to the whole frame :(
+  (face-remap-add-relative 'fringe '((:background "black")))
+
+  ;; we don't need line/column numbers in our header line either
+  (setq-local header-line-format
+              '((:eval
+                 (status-line-render
+                  (format "%%b")
+                  (format " "))))))
 
 ;; run custom functions when some major modes are entered
 (add-hook 'scss-mode-hook 'my-css-mode-hook)
 (add-hook 'emacs-lisp-mode-hook 'common-lisp-mode-hook)
-(add-hook 'js-mode-hook 'my-javascript-mode-hook)
-(add-hook 'json-mode-hook 'my-json-mode-hook)
+(add-hook 'js-mode-hook 'my-js-json-mode-hook)
+(add-hook 'json-mode-hook 'my-js-json-mode-hook)
 (add-hook 'lisp-mode-hook 'common-lisp-mode-hook)
 (add-hook 'term-mode-hook 'my-terminal-mode-hook)
 (add-hook 'flymake-mode-hook 'my-flymake-mode-hook)
@@ -230,6 +290,8 @@ With argument ARG, do this that many times."
 (set-frame-parameter (selected-frame)
                      'internal-border-width 20)
 
+(push 'ignore-file-p treemacs-ignored-file-predicates)
+
 ;; replace the stock Flymake warning/error indicators with a bigger one for hidpi
 ;; maxmum width is 16px according to emacs docs
 (define-fringe-bitmap 'flymake-big-indicator
@@ -258,6 +320,7 @@ With argument ARG, do this that many times."
  ;; If there is more than one, they won't work right.
  '(backup-by-copying t)
  '(blink-cursor-mode nil)
+ '(company-backends '(company-files company-capf company-semantic))
  '(company-minimum-prefix-length 1)
  '(company-quickhelp-color-background nil)
  '(company-quickhelp-color-foreground nil)
@@ -266,6 +329,7 @@ With argument ARG, do this that many times."
  '(coverlay:mark-tested-lines nil)
  '(coverlay:untested-line-background-color "#ffe8e8")
  '(cua-mode t nil (cua-base))
+ '(debug-on-error t)
  '(flymake-error-bitmap '(flymake-big-indicator compilation-error))
  '(flymake-eslint-executable-args "\"-f unix\"")
  '(flymake-eslint-executable-name "eslint")
@@ -277,20 +341,17 @@ With argument ARG, do this that many times."
  '(flymake-warning-bitmap '(flymake-big-indicator compilation-warning))
  '(font-use-system-font nil)
  '(frame-title-format '("%f") t)
- '(fringe-mode '(24 . 0) nil (fringe))
+ '(fringe-mode '(24 . 8) nil (fringe))
  '(header-line-format
    '((:eval
       (status-line-render
-       (format " %s %s"
+       (format "%s %%b"
                (if
                    (and
                     (buffer-file-name)
                     (buffer-modified-p))
-                   " *" "  ")
-               (or
-                (buffer-file-name)
-                (buffer-name)))
-       (format "%-8s"
+                   "*" " "))
+       (format "%s"
                (format-mode-line "%l:%c"))))) t)
  '(help-at-pt-display-when-idle '(flymake-diagnostic) nil (help-at-pt))
  '(help-at-pt-timer-delay 0.25)
@@ -298,43 +359,33 @@ With argument ARG, do this that many times."
  '(inhibit-startup-screen t)
  '(js-chain-indent nil)
  '(js-enabled-frameworks nil)
+ '(js-indent-level 2)
  '(js-switch-indent-offset 4)
- '(js2-highlight-external-variables nil)
- '(js2-include-browser-externs nil)
- '(js2-include-jslint-declaration-externs nil)
- '(js2-include-jslint-globals nil)
- '(js2-indent-switch-body t)
- '(js2-mode-show-parse-errors nil)
- '(js2-mode-show-strict-warnings nil)
- '(js2-strict-cond-assign-warning nil)
- '(js2-strict-inconsistent-return-warning nil)
- '(js2-strict-missing-semi-warning nil)
- '(js2-strict-var-hides-function-arg-warning nil)
- '(js2-strict-var-redeclaration-warning nil)
+ '(lsp-auto-configure nil)
+ '(lsp-diagnostic-package :flymake)
+ '(lsp-enable-snippet nil)
  '(menu-bar-mode nil)
  '(mode-line-format
    '((:eval
       (status-line-render
-       ;; left side
-       (let ((left-string (format-mode-line
-                           (list " " mode-name minor-mode-alist))))
-         (set-text-properties 0 (- (length left-string) 1) nil left-string)
-         (format "%s" left-string))
-       ;; right side
-       (if (stringp vc-mode)
-           (format "%s%s"
-                   (char-to-string 57504)
-                   (format-mode-line
-                    '(vc-mode vc-mode)))
+       (format-mode-line
+        (list " " mode-name minor-mode-alist))
+       (if
+           (stringp vc-mode)
+           (format "%s"
+                   (format "%s%s"
+                           (char-to-string 57504)
+                           (format-mode-line
+                            '(vc-mode vc-mode))))
          "")))))
  '(package-selected-packages
-   '(web-mode js-doc projectile treemacs-projectile treemacs 2048-game dockerfile-mode tide request flymake-stylelint company scss-mode rjsx-mode powerline markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
+   '(auto-dim-other-buffers lsp-ui lsp-mode flymake-json editorconfig dotenv-mode web-mode js-doc projectile treemacs-projectile treemacs 2048-game dockerfile-mode request flymake-stylelint company scss-mode markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
+ '(read-process-output-max (* 1024 1024) t)
  '(scroll-bar-mode nil)
  '(sgml-basic-offset 4)
  '(tool-bar-mode nil)
  '(uniquify-buffer-name-style 'forward nil (uniquify))
- '(widget-image-enable nil)
- '(window-min-height 4))
+ '(widget-image-enable nil))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
@@ -351,25 +402,18 @@ With argument ARG, do this that many times."
  '(font-lock-comment-face ((t (:inherit default :foreground "Firebrick"))))
  '(font-lock-doc-face ((t (:inherit font-lock-comment-face))))
  '(font-lock-function-name-face ((t (:foreground "steel blue" :weight bold))))
- '(header-line ((t (:inherit mode-line :background "AntiqueWhite4" :foreground "white" :box nil))))
- '(js2-error ((t nil)))
- '(js2-external-variable ((t nil)))
- '(js2-function-call ((t (:inherit font-lock-function-name-face :weight normal))))
- '(js2-jsdoc-html-tag-name ((t (:inherit js2-jsdoc-type))))
- '(js2-jsdoc-tag ((t (:inherit font-lock-comment-face :weight bold))))
- '(js2-jsdoc-value ((t (:inherit js2-function-param))))
- '(js2-warning ((t nil)))
- '(mode-line ((t (:background "AntiqueWhite3" :foreground "gray37"))))
- '(mode-line-highlight ((t nil)))
- '(mode-line-inactive ((t (:background "gray95" :foreground "gray22"))))
+ '(header-line ((t (:inherit default :background "gray95" :foreground "gray33" :weight bold))))
+ '(mode-line ((t (:background "steel blue" :foreground "white" :weight bold))))
+ '(mode-line-highlight ((t (:inherit mode-line))))
+ '(mode-line-inactive ((t (:inherit nil :background "nil" :foreground "gray33" :weight bold))))
  '(region ((t (:extend t :background "gray90" :distant-foreground "gtk_selection_fg_color"))))
- '(rjsx-attr ((t (:inherit rjsx-tag :weight normal))))
- '(rjsx-tag ((t (:foreground "dim gray" :weight bold))))
- '(rjsx-tag-bracket-face ((t (:inherit rjsx-tag))))
- '(rjsx-text ((t nil)))
  '(term ((t (:background "black" :foreground "white"))))
  '(term-bold ((t (:background "black" :foreground "white" :weight bold))))
- '(term-color-blue ((t (:background "DeepSkyBlue4" :foreground "DeepSkyBlue4")))))
+ '(term-color-blue ((t (:background "DeepSkyBlue4" :foreground "DeepSkyBlue4"))))
+ '(treemacs-directory-face ((t (:inherit font-lock-function-name-face :weight normal))))
+ '(treemacs-git-ignored-face ((t (:inherit font-lock-comment-face))))
+ '(treemacs-git-modified-face ((t (:inherit font-lock-variable-name-face :weight bold))))
+ '(treemacs-git-untracked-face ((t (:inherit nil :foreground "forest green" :weight bold)))))
 
 
 ;;; key commands
@@ -398,9 +442,15 @@ With argument ARG, do this that many times."
 ;; use useful Flycheck key bindings in Flymake
 (define-key flymake-mode-map (kbd "C-c ! n") 'flymake-goto-next-error)
 (define-key flymake-mode-map (kbd "C-c ! p") 'flymake-goto-prev-error)
-;; keyboard command to force auto-completion
+;; keyboard shortcut to force auto-completion
 (define-key company-mode-map (kbd "M-/") 'company-complete)
-;; I don't use this
+;; keyboard shortcut to find a file in the current project, like VSCode does
+(define-key projectile-mode-map (kbd "C-p") 'projectile-find-file)
+;; I don't use these
+(global-set-key (kbd "C-b") 'noop)
+(global-set-key (kbd "C-f") 'noop)
+(global-set-key (kbd "C-n") 'noop)
+(global-set-key (kbd "C-p") 'noop)
 (global-set-key (kbd "C-x C-k") nil)
 ;; Ctrl-w -> close buffer.  CUA-ish
 (global-set-key (kbd "C-w") 'close-buffer)
@@ -417,6 +467,13 @@ With argument ARG, do this that many times."
             (file-name-shadow-mode -1)
             (global-auto-composition-mode -1)
             (package-refresh-contents t)
+            ;; project view
+            (treemacs)
+            ;; open a terminal at the bottom of the frame
+            (select-window (next-window))
+            (select-window (split-window-below -10))
+            (term "/bin/bash")
+            (select-window (previous-window))
             ;; keep me last
             (message "startup time: %s" (emacs-init-time))))
 
