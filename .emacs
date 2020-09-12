@@ -26,10 +26,11 @@
 (require 'company)
 (require 'company-quickhelp)
 ;; code analysis
-(require 'lsp)
-(require 'lsp-clients)
+(require 'lsp-mode)
 ;; mode line cleaner-upper
 (require 'delight)
+;; multiple modes in the same buffer
+(require 'mmm-mode)
 ;; linting
 (require 'flymake)
 ;; tree-navigation mode
@@ -128,6 +129,7 @@ With argument ARG, do this that many times."
 (delight '((subword-mode nil "subword")
            (company-mode nil "company")
            (lsp-mode nil "lsp")
+           (mmm-mode nil nil)
            (projectile-mode nil t)
            (coverlay-minor-mode nil "coverlay")
            (eldoc-mode nil "eldoc")))
@@ -174,32 +176,39 @@ With argument ARG, do this that many times."
 
   ;; add an eslint backend to flymake
   (flymake-eslint-enable)
-  (setq flymake-eslint-project-root (locate-dominating-file buffer-file-name ".eslintrc.js"))
+  (if (buffer-file-name)
+      (setq flymake-eslint-project-root (locate-dominating-file buffer-file-name ".eslintrc.js")))
 
   ;; code-completion
   (company-mode t)
   (company-quickhelp-mode t)
+  (lsp-completion-mode t)
 
   ;; camelCase-aware navigation
   (subword-mode t)
 
   ;; turn on coverage mode if not a test file
-  (unless (string-match-p "test.js[x]?\\'" buffer-file-name)
-    (when-let
-        ((coverage-dir
-          (locate-dominating-file
-           (buffer-file-name)
-           "coverage")))
-      (coverlay-minor-mode t)
-      (setq coverlay:base-path
-            (expand-file-name coverage-dir "coverage"))
-      (unless
-          (bound-and-true-p coverlay--loaded-filepath)
-        ;; load the closest coverage file if one hasn't been loaded yet
-        (coverlay-watch-file
-         (concat
-          (locate-dominating-file buffer-file-name "coverage")
-          "coverage/lcov.info")))))
+  (if (buffer-file-name)
+      (unless (string-match-p "test.js[x]?\\'" (buffer-file-name))
+        (when-let
+            ((coverage-dir
+              (locate-dominating-file
+               (buffer-file-name)
+               "coverage")))
+          (coverlay-minor-mode t)
+          (setq coverlay:base-path
+                (expand-file-name coverage-dir "coverage"))
+          (unless
+              (bound-and-true-p coverlay--loaded-filepath)
+            ;; load the closest coverage file if one hasn't been loaded yet
+            (coverlay-watch-file
+             (concat
+              (locate-dominating-file buffer-file-name "coverage")
+              "coverage/lcov.info"))))))
+
+  ;; enable multiple major modes (for css-in-js etc)
+  (mmm-mode t)
+  (mmm-add-mode-ext-class 'js-mode nil 'mmm-styled-mode)
 
   ;; I want the key command in the xref map instead of this one
   (define-key js-mode-map (kbd "M-.") nil))
@@ -208,12 +217,15 @@ With argument ARG, do this that many times."
   "Do some things when opening JSON files."
   (make-local-variable 'js-indent-level)
 
+  (lsp-mode nil)
+  (lsp-completion-mode nil)
+
   ;; enable camelCase-aware navigation
   (subword-mode t))
 
 (defun my-js-json-mode-hook ()
   "Emacs' json major mode descends from its js major mode, so the hook situation is all messed up without something like this."
-  (if (string-match-p "json\\'" (buffer-file-name))
+  (if (string-match-p "json\\'" (or (buffer-file-name) ""))
       (my-json-mode-hook)
     (my-javascript-mode-hook)))
 
@@ -251,6 +263,18 @@ With argument ARG, do this that many times."
                  (status-line-render
                   (format "%%b")
                   (format " "))))))
+
+(defun term-send-cx ()
+  "Send a ctrl-x to the terminal.  Useful if you played yourself."
+
+  (term-send-raw-string ""))
+
+;; configure some multi-mode stuff
+(setq mmm-classes-alist
+  '((mmm-styled-mode
+    :submode css-mode
+    :front "\\(styled\\|css\\)[.()<>[:alnum:]]?+`"
+    :back "`;")))
 
 ;; run custom functions when some major modes are entered
 (add-hook 'scss-mode-hook 'my-css-mode-hook)
@@ -321,6 +345,7 @@ With argument ARG, do this that many times."
  '(backup-by-copying t)
  '(blink-cursor-mode nil)
  '(company-backends '(company-files company-capf company-semantic))
+ '(company-files-exclusions '("~" "*#"))
  '(company-minimum-prefix-length 1)
  '(company-quickhelp-color-background nil)
  '(company-quickhelp-color-foreground nil)
@@ -360,11 +385,13 @@ With argument ARG, do this that many times."
  '(js-chain-indent nil)
  '(js-enabled-frameworks nil)
  '(js-indent-level 2)
- '(js-switch-indent-offset 4)
- '(lsp-auto-configure nil)
- '(lsp-diagnostic-package :flymake)
+ '(js-jsx-attribute-offset 2)
+ '(js-switch-indent-offset 2)
+ '(lsp-auto-configure t)
+ '(lsp-diagnostics-provider :flymake)
  '(lsp-enable-snippet nil)
  '(menu-bar-mode nil)
+ '(mmm-submode-decoration-level 0)
  '(mode-line-format
    '((:eval
       (status-line-render
@@ -379,11 +406,13 @@ With argument ARG, do this that many times."
                             '(vc-mode vc-mode))))
          "")))))
  '(package-selected-packages
-   '(auto-dim-other-buffers lsp-ui lsp-mode flymake-json editorconfig dotenv-mode web-mode js-doc projectile treemacs-projectile treemacs 2048-game dockerfile-mode request flymake-stylelint company scss-mode markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
+   '(js2-mode mmm-mode typescript-mode auto-dim-other-buffers lsp-ui lsp-mode flymake-json editorconfig dotenv-mode web-mode js-doc projectile treemacs-projectile treemacs 2048-game dockerfile-mode request flymake-stylelint company scss-mode markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
  '(read-process-output-max (* 1024 1024) t)
  '(scroll-bar-mode nil)
  '(sgml-basic-offset 4)
  '(tool-bar-mode nil)
+ '(treemacs-is-never-other-window t)
+ '(treemacs-space-between-root-nodes nil)
  '(uniquify-buffer-name-style 'forward nil (uniquify))
  '(widget-image-enable nil))
 
@@ -403,9 +432,10 @@ With argument ARG, do this that many times."
  '(font-lock-doc-face ((t (:inherit font-lock-comment-face))))
  '(font-lock-function-name-face ((t (:foreground "steel blue" :weight bold))))
  '(header-line ((t (:inherit default :background "gray95" :foreground "gray33" :weight bold))))
+ '(highlight ((t (:background "#90c4ff" :foreground "white"))))
  '(mode-line ((t (:background "steel blue" :foreground "white" :weight bold))))
  '(mode-line-highlight ((t (:inherit mode-line))))
- '(mode-line-inactive ((t (:inherit nil :background "nil" :foreground "gray33" :weight bold))))
+ '(mode-line-inactive ((t (:inherit default :foreground "gray33" :weight bold))))
  '(region ((t (:extend t :background "gray90" :distant-foreground "gtk_selection_fg_color"))))
  '(term ((t (:background "black" :foreground "white"))))
  '(term-bold ((t (:background "black" :foreground "white" :weight bold))))
@@ -413,7 +443,8 @@ With argument ARG, do this that many times."
  '(treemacs-directory-face ((t (:inherit font-lock-function-name-face :weight normal))))
  '(treemacs-git-ignored-face ((t (:inherit font-lock-comment-face))))
  '(treemacs-git-modified-face ((t (:inherit font-lock-variable-name-face :weight bold))))
- '(treemacs-git-untracked-face ((t (:inherit nil :foreground "forest green" :weight bold)))))
+ '(treemacs-git-untracked-face ((t (:inherit default :foreground "forest green" :weight bold))))
+ '(treemacs-root-face ((t (:inherit font-lock-constant-face :underline t :weight bold)))))
 
 
 ;;; key commands
@@ -468,6 +499,7 @@ With argument ARG, do this that many times."
             (global-auto-composition-mode -1)
             (package-refresh-contents t)
             ;; project view
+            (treemacs-resize-icons 22)
             (treemacs)
             ;; open a terminal at the bottom of the frame
             (select-window (next-window))

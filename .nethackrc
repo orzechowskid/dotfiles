@@ -15,6 +15,8 @@ OPTIONS=pettype:cat
 OPTIONS=pickup_types:$
 OPTIONS=statushilites=5
 OPTIONS=symset:IBMgraphics
+#OPTIONS=windowtype:curses
+OPTIONS=perm_invent
 
 MENUCOLOR="blessed"=green
 MENUCOLOR="cursed"=red
