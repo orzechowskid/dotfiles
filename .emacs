@@ -207,18 +207,19 @@ With argument ARG, do this that many times."
               "coverage/lcov.info"))))))
 
   ;; enable multiple major modes (for css-in-js etc)
-  (mmm-mode t)
-  (mmm-add-mode-ext-class 'js-mode nil 'mmm-styled-mode)
+;  (mmm-mode t)
+;  (mmm-add-mode-ext-class 'js-mode nil 'mmm-styled-mode)
 
   ;; I want the key command in the xref map instead of this one
   (define-key js-mode-map (kbd "M-.") nil))
 
 (defun my-json-mode-hook ()
   "Do some things when opening JSON files."
+
   (make-local-variable 'js-indent-level)
 
-  (lsp-mode nil)
-  (lsp-completion-mode nil)
+  (lsp-mode -1)
+  (lsp-completion-mode -1)
 
   ;; enable camelCase-aware navigation
   (subword-mode t))
@@ -390,6 +391,7 @@ With argument ARG, do this that many times."
  '(lsp-auto-configure t)
  '(lsp-diagnostics-provider :flymake)
  '(lsp-enable-snippet nil)
+ '(lsp-modeline-code-actions-enable nil)
  '(menu-bar-mode nil)
  '(mmm-submode-decoration-level 0)
  '(mode-line-format
