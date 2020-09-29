@@ -25,15 +25,20 @@
 ;; code completion
 (require 'company)
 (require 'company-quickhelp)
+;; support nvm doing weird things to our shell $PATH but not our login session $PATH
+(require 'exec-path-from-shell)
 ;; code analysis
-(require 'lsp)
-(require 'lsp-clients)
+(require 'lsp-mode)
+(require 'lsp-javascript)
+;; embed major modes in other major modes
+(require 'mmm-mode)
+;; project-centric editing
+(require 'projectile)
 ;; mode line cleaner-upper
 (require 'delight)
 ;; linting
 (require 'flymake)
-;; tree-navigation mode
-(require 'treemacs-projectile)
+(require 'flymake-stylelint) ;; eyyyy don't forget this is not on MELPA yet and needs to be installed manually
 ;; change how files with the same basename are differentiated
 (require 'uniquify)
 
@@ -56,6 +61,9 @@
   t)
 (autoload 'scss-mode "scss-mode"
   "Use the scss-mode package to provide 'scss-mode on-demand."
+  t)
+(autoload 'yaml-mode "yaml-mode"
+  "Use the yaml-mode package to provide 'yaml-mode on-demand."
   t)
 
 
@@ -92,10 +100,11 @@ With argument ARG, do this that many times."
   "Tell projectile to ignore some stuff based on the NAME and PATH of a file in the project."
   (or (string= name "node_modules")
       (string= name ".git")
+      (string= name ".circleci")
       (string= name "coverage")))
 
 (defun noop ()
-  "Does nothing.  Use as a keyboard-shortcut handler instead of NIL to suppress the '<foo> is undefined' message."
+  "Does nothing."
   (interactive))
 
 ;; header- and mode-line rendering function
@@ -121,6 +130,11 @@ With argument ARG, do this that many times."
                     (display-local-help)
                   (funcall oldfn doc-msg)))))
 
+(defun term-send-cx ()
+  "Sends Ctrl-x to a term buffer.  Useful if you accidentally open nano."
+  (interactive)
+  (term-send-raw-string ""))
+
 ;; shorten some major-mode modeline strings
 (delight '((emacs-lisp-mode "ELisp")))
 
@@ -142,6 +156,11 @@ With argument ARG, do this that many times."
                " ✓")
               return-value))
 
+(advice-add
+ 'yank
+ :after
+ (lambda (&rest unused)
+   (indent-region (region-beginning) (region-end) nil)))
 
 ;;; mode hooks and config
 
@@ -252,6 +271,43 @@ With argument ARG, do this that many times."
                   (format "%%b")
                   (format " "))))))
 
+(defun my-ts-mode-hook ()
+  "Do some things when editing a Typescript file."
+
+  ;; treat this file as part of a larger project (when applicable)
+  (projectile-mode)
+
+  ;; code analysis via a language server
+  (lsp)
+  (lsp-completion-mode t)
+
+  ;; add an eslint backend to flymake
+;;  (flymake-eslint-enable)
+;;  (setq flymake-eslint-project-root (locate-dominating-file buffer-file-name ".eslintrc.js"))
+
+  ;; code-completion
+  (company-mode t)
+  (company-quickhelp-mode t)
+
+  ;; camelCase-aware navigation
+  (subword-mode t))
+
+(defun my-minibuf-entrance-hook ()
+  "Do some things when activating the minibuffer."
+
+  ;; stolen from Doom
+  (setq gc-cons-threshold most-positive-fixnum))
+
+(defun my-minibuf-exit-hook ()
+  "Do some things when leaving the minibuffer."
+
+  ;; stolen from Doom
+  (run-at-time
+   1
+   nil
+   (lambda ()
+     (setq gc-cons-threshold 16777216))))
+
 ;; run custom functions when some major modes are entered
 (add-hook 'scss-mode-hook 'my-css-mode-hook)
 (add-hook 'emacs-lisp-mode-hook 'common-lisp-mode-hook)
@@ -260,6 +316,18 @@ With argument ARG, do this that many times."
 (add-hook 'lisp-mode-hook 'common-lisp-mode-hook)
 (add-hook 'term-mode-hook 'my-terminal-mode-hook)
 (add-hook 'flymake-mode-hook 'my-flymake-mode-hook)
+(add-hook 'typescript-mode-hook 'my-ts-mode-hook)
+(add-hook 'minibuffer-setup-hook 'my-minibuf-entrance-hook)
+(add-hook 'minibuffer-exit-hook 'my-minibuf-exit-hook)
+
+;; mmm-mode definitions
+(mmm-add-classes
+ (mmm-add-classes
+  '((mmm-styled-mode
+     :submode scss-mode
+     :front "\\(styled\\|css\\)[.()<>[:alnum:]]?+`"
+     :back "`;"))))
+ (mmm-add-mode-ext-class 'typescript-mode nil 'mmm-styled-mode)
 
 ;; associate some major modes with some file extensions
 (push '("\\.js[x]?\\'" . js-mode) auto-mode-alist)
@@ -267,6 +335,8 @@ With argument ARG, do this that many times."
 (push '("\\.[s]?css\\'" . scss-mode) auto-mode-alist)
 (push '("\\.less\\'" . scss-mode) auto-mode-alist)
 (push '("\\.md\\'" . markdown-mode) auto-mode-alist)
+(push '("\\.y[a]?ml\\'" . yaml-mode) auto-mode-alist)
+(push '("\\.ts[x]?\\'" . typescript-mode) auto-mode-alist)
 
 
 ;;; variables and faces
@@ -289,8 +359,6 @@ With argument ARG, do this that many times."
                '(font . "Source Code Pro Light 12")))
 (set-frame-parameter (selected-frame)
                      'internal-border-width 20)
-
-(push 'ignore-file-p treemacs-ignored-file-predicates)
 
 ;; replace the stock Flymake warning/error indicators with a bigger one for hidpi
 ;; maxmum width is 16px according to emacs docs
@@ -330,18 +398,22 @@ With argument ARG, do this that many times."
  '(coverlay:untested-line-background-color "#ffe8e8")
  '(cua-mode t nil (cua-base))
  '(debug-on-error t)
+ '(exec-path-from-shell-check-startup-files nil)
  '(flymake-error-bitmap '(flymake-big-indicator compilation-error))
  '(flymake-eslint-executable-args "\"-f unix\"")
  '(flymake-eslint-executable-name "eslint")
  '(flymake-jslint-args '("--no-color" "--no-ignore" "--stdin"))
  '(flymake-jslint-command "eslint")
  '(flymake-no-changes-timeout 0.5)
+ '(flymake-note-bitmap '(flymake-big-indicator compilation-info))
  '(flymake-stylelint-executable-args "-q")
  '(flymake-stylelint-executable-name "stylelint")
  '(flymake-warning-bitmap '(flymake-big-indicator compilation-warning))
  '(font-use-system-font nil)
  '(frame-title-format '("%f") t)
  '(fringe-mode '(24 . 8) nil (fringe))
+ '(gc-cons-percentage 0.1)
+ '(gc-cons-threshold 16777216)
  '(header-line-format
    '((:eval
       (status-line-render
@@ -357,13 +429,19 @@ With argument ARG, do this that many times."
  '(help-at-pt-timer-delay 0.25)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
+ '(ivy-magic-tilde nil)
+ '(ivy-sort-matches-functions-alist
+   '((t)
+     (ivy-completion-in-region . ivy--shorter-matches-first)
+     (ivy-switch-buffer . ivy-sort-function-buffer)))
+ '(ivy-wrap t)
  '(js-chain-indent nil)
  '(js-enabled-frameworks nil)
  '(js-indent-level 2)
  '(js-switch-indent-offset 4)
- '(lsp-auto-configure nil)
- '(lsp-diagnostic-package :flymake)
+ '(lsp-enable-folding nil)
  '(lsp-enable-snippet nil)
+ '(lsp-modeline-code-actions-enable nil)
  '(menu-bar-mode nil)
  '(mode-line-format
    '((:eval
@@ -379,13 +457,16 @@ With argument ARG, do this that many times."
                             '(vc-mode vc-mode))))
          "")))))
  '(package-selected-packages
-   '(auto-dim-other-buffers lsp-ui lsp-mode flymake-json editorconfig dotenv-mode web-mode js-doc projectile treemacs-projectile treemacs 2048-game dockerfile-mode request flymake-stylelint company scss-mode markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
+   '(all-the-icons-ivy counsel all-the-icons gcmh swiper mmm-mode company-prescient typescript-mode exec-path-from-shell auto-dim-other-buffers lsp-mode flymake-json editorconfig dotenv-mode web-mode js-doc projectile 2048-game dockerfile-mode request flymake-stylelint company scss-mode markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
  '(read-process-output-max (* 1024 1024) t)
  '(scroll-bar-mode nil)
- '(sgml-basic-offset 4)
+ '(sgml-basic-offset 2)
  '(tool-bar-mode nil)
+ '(typescript-enabled-frameworks '(typescript mochikit exttypescript))
+ '(typescript-indent-level 2)
  '(uniquify-buffer-name-style 'forward nil (uniquify))
- '(widget-image-enable nil))
+ '(widget-image-enable nil)
+ '(yas-expand-snippet noop))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
@@ -403,17 +484,14 @@ With argument ARG, do this that many times."
  '(font-lock-doc-face ((t (:inherit font-lock-comment-face))))
  '(font-lock-function-name-face ((t (:foreground "steel blue" :weight bold))))
  '(header-line ((t (:inherit default :background "gray95" :foreground "gray33" :weight bold))))
+ '(highlight ((t (:background "light steel blue"))))
  '(mode-line ((t (:background "steel blue" :foreground "white" :weight bold))))
  '(mode-line-highlight ((t (:inherit mode-line))))
- '(mode-line-inactive ((t (:inherit nil :background "nil" :foreground "gray33" :weight bold))))
+ '(mode-line-inactive ((t (:inherit default :foreground "gray33" :weight bold))))
  '(region ((t (:extend t :background "gray90" :distant-foreground "gtk_selection_fg_color"))))
  '(term ((t (:background "black" :foreground "white"))))
  '(term-bold ((t (:background "black" :foreground "white" :weight bold))))
- '(term-color-blue ((t (:background "DeepSkyBlue4" :foreground "DeepSkyBlue4"))))
- '(treemacs-directory-face ((t (:inherit font-lock-function-name-face :weight normal))))
- '(treemacs-git-ignored-face ((t (:inherit font-lock-comment-face))))
- '(treemacs-git-modified-face ((t (:inherit font-lock-variable-name-face :weight bold))))
- '(treemacs-git-untracked-face ((t (:inherit nil :foreground "forest green" :weight bold)))))
+ '(term-color-blue ((t (:background "DeepSkyBlue4" :foreground "DeepSkyBlue4")))))
 
 
 ;;; key commands
@@ -451,6 +529,7 @@ With argument ARG, do this that many times."
 (global-set-key (kbd "C-f") 'noop)
 (global-set-key (kbd "C-n") 'noop)
 (global-set-key (kbd "C-p") 'noop)
+(global-set-key (kbd "C-x C-f") 'counsel-find-file)
 (global-set-key (kbd "C-x C-k") nil)
 ;; Ctrl-w -> close buffer.  CUA-ish
 (global-set-key (kbd "C-w") 'close-buffer)
@@ -461,19 +540,15 @@ With argument ARG, do this that many times."
 
 (add-hook 'after-init-hook
           (lambda ()
+            (all-the-icons-ivy-setup)
             (auto-compression-mode -1)
             (auto-encryption-mode -1)
             (blink-cursor-mode -1)
             (file-name-shadow-mode -1)
             (global-auto-composition-mode -1)
             (package-refresh-contents t)
-            ;; project view
-            (treemacs)
-            ;; open a terminal at the bottom of the frame
-            (select-window (next-window))
-            (select-window (split-window-below -10))
-            (term "/bin/bash")
-            (select-window (previous-window))
+            ;; nvm/node.js
+            (exec-path-from-shell-initialize)
             ;; keep me last
             (message "startup time: %s" (emacs-init-time))))
 
