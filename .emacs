@@ -322,11 +322,6 @@ With argument ARG, do this that many times."
    (lambda ()
      (setq gc-cons-threshold 16777216))))
 
-(defun term-send-cx ()
-  "Send a ctrl-x to the terminal.  Useful if you played yourself."
-
-  (term-send-raw-string ""))
-
 ;; configure some multi-mode stuff
 (setq mmm-classes-alist
   '((mmm-styled-mode
@@ -460,17 +455,17 @@ With argument ARG, do this that many times."
  '(ivy-sort-matches-functions-alist
    '((t)
      (ivy-completion-in-region . ivy--shorter-matches-first)
-     (ivy-switch-buffer . ivy-sort-function-buffer)))
+     (ivy-switch-buffer . ivy-sort-function-buffer)
+     (counsel-find-file . ivy-sort-function-buffer)))
  '(ivy-wrap t)
  '(js-chain-indent nil)
  '(js-enabled-frameworks nil)
  '(js-indent-level 2)
- '(js-switch-indent-offset 4)
- '(lsp-enable-folding nil)
  '(js-jsx-attribute-offset 2)
  '(js-switch-indent-offset 2)
  '(lsp-auto-configure t)
  '(lsp-diagnostics-provider :flymake)
+ '(lsp-enable-folding nil)
  '(lsp-enable-snippet nil)
  '(lsp-modeline-code-actions-enable nil)
  '(menu-bar-mode nil)
@@ -489,15 +484,15 @@ With argument ARG, do this that many times."
                             '(vc-mode vc-mode))))
          "")))))
  '(package-selected-packages
-   '(all-the-icons-ivy counsel all-the-icons company-prescient mmm-mode typescript-mode auto-dim-other-buffers lsp-mode swiper flymake-json editorconfig dotenv-mode web-mode js-doc projectile treemacs-projectile treemacs exec-path-from-shell 2048-game dockerfile-mode request flymake-stylelint company scss-mode markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
+   '(all-the-icons-ivy-rich all-the-icons-ivy counsel all-the-icons company-prescient mmm-mode typescript-mode auto-dim-other-buffers lsp-mode swiper flymake-json editorconfig dotenv-mode web-mode js-doc projectile treemacs-projectile treemacs exec-path-from-shell 2048-game dockerfile-mode request flymake-stylelint company scss-mode markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
  '(read-process-output-max (* 1024 1024) t)
  '(scroll-bar-mode nil)
  '(sgml-basic-offset 2)
  '(tool-bar-mode nil)
- '(typescript-enabled-frameworks '(typescript mochikit exttypescript))
- '(typescript-indent-level 2)
  '(treemacs-is-never-other-window t)
  '(treemacs-space-between-root-nodes nil)
+ '(typescript-enabled-frameworks '(typescript mochikit exttypescript))
+ '(typescript-indent-level 2)
  '(uniquify-buffer-name-style 'forward nil (uniquify))
  '(widget-image-enable nil)
  '(yas-expand-snippet noop))
