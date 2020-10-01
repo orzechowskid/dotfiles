@@ -25,24 +25,25 @@
 ;; code completion
 (require 'company)
 (require 'company-quickhelp)
-;; support nvm doing weird things to our shell $PATH but not our login session $PATH
-(require 'exec-path-from-shell)
-;; code analysis
-(require 'lsp-mode)
-(require 'lsp-javascript)
-;; embed major modes in other major modes
-(require 'mmm-mode)
-;; project-centric editing
-(require 'projectile)
 ;; mode line cleaner-upper
 (require 'delight)
-;; multiple modes in the same buffer
-(require 'mmm-mode)
+;; support nvm doing weird things to our shell $PATH but not our login session $PATH
+(require 'exec-path-from-shell)
 ;; linting
 (require 'flymake)
 (require 'flymake-stylelint) ;; eyyyy don't forget this is not on MELPA yet and needs to be installed manually
+;; code analysis
+(require 'lsp-mode)
+(require 'lsp-javascript)
+;; multiple modes in the same buffer
+(require 'mmm-mode)
+;; project-centric editing
+(require 'projectile)
 ;; change how files with the same basename are differentiated
 (require 'uniquify)
+
+;; to configure mmm
+(require 'scss-mode)
 
 ;; these guys, however...
 
@@ -292,8 +293,8 @@ With argument ARG, do this that many times."
   (projectile-mode)
 
   ;; code analysis via a language server
-  (lsp)
-  (lsp-completion-mode t)
+;  (lsp)
+;  (lsp-completion-mode t)
 
   ;; add an eslint backend to flymake
 ;;  (flymake-eslint-enable)
@@ -327,13 +328,6 @@ With argument ARG, do this that many times."
 
   (term-send-raw-string ""))
 
-;; configure some multi-mode stuff
-(setq mmm-classes-alist
-  '((mmm-styled-mode
-    :submode css-mode
-    :front "\\(styled\\|css\\)[.()<>[:alnum:]]?+`"
-    :back "`;")))
-
 ;; run custom functions when some major modes are entered
 (add-hook 'scss-mode-hook 'my-css-mode-hook)
 (add-hook 'emacs-lisp-mode-hook 'common-lisp-mode-hook)
@@ -347,13 +341,41 @@ With argument ARG, do this that many times."
 (add-hook 'minibuffer-exit-hook 'my-minibuf-exit-hook)
 
 ;; mmm-mode definitions
-(mmm-add-classes
- (mmm-add-classes
-  '((mmm-styled-mode
-     :submode scss-mode
-     :front "\\(styled\\|css\\)[.()<>[:alnum:]]?+`"
-     :back "`;"))))
- (mmm-add-mode-ext-class 'typescript-mode nil 'mmm-styled-mode)
+(defun mmm-styled-components-indent ()
+  (interactive)
+  (save-excursion
+    (beginning-of-line)
+    (insert (format (format "%%%ds" css-indent-offset) "")))
+  (when (< (current-column) (current-indentation))
+    (back-to-indentation)))
+
+(defun mmm-styled-components-outdent ()
+  (interactive)
+  (when (>= (current-indentation) css-indent-offset)
+    (save-excursion
+      (back-to-indentation)
+      (delete-char (- css-indent-offset)))))
+
+(define-derived-mode my-css-in-js-mmm-mode scss-mode "styled-component"
+  (add-to-list 'mmm-save-local-variables 'css-indent-offset)
+  (add-to-list 'mmm-save-local-variables '(indent-line-function region '(my-css-in-js-mmm-mode)))
+  (setq-local css-indent-offset 2)
+  
+  (setq-local indent-line-function 'mmm-styled-components-indent)
+  (setq css-in-js-keymap (make-sparse-keymap))
+  (use-local-map css-in-js-keymap)
+  (define-key css-in-js-keymap (kbd "<return>") 'electric-newline-and-maybe-indent)
+  (define-key css-in-js-keymap (kbd "<backtab>") 'mmm-styled-components-outdent))
+
+
+(add-to-list 'mmm-classes-alist
+      '(mmm-styled-mode
+         :submode my-css-in-js-mmm-mode
+         :creation-hook (lambda () (mmm-set-local-variables nil nil))
+         :front "\\(styled\\|css\\)[.()<>[:alnum:]]?+`"
+         :back "`;"))
+
+(mmm-add-mode-ext-class 'typescript-mode nil 'mmm-styled-mode)
 
 ;; associate some major modes with some file extensions
 (push '("\\.js[x]?\\'" . js-mode) auto-mode-alist)
@@ -459,18 +481,15 @@ With argument ARG, do this that many times."
  '(ivy-magic-tilde nil)
  '(ivy-sort-matches-functions-alist
    '((t)
-     (ivy-completion-in-region . ivy--shorter-matches-first)
-     (ivy-switch-buffer . ivy-sort-function-buffer)))
- '(ivy-wrap t)
+     (counsel-find-file . ivy-sort-function-buffer)))
  '(js-chain-indent nil)
  '(js-enabled-frameworks nil)
  '(js-indent-level 2)
- '(js-switch-indent-offset 4)
- '(lsp-enable-folding nil)
  '(js-jsx-attribute-offset 2)
  '(js-switch-indent-offset 2)
  '(lsp-auto-configure t)
  '(lsp-diagnostics-provider :flymake)
+ '(lsp-enable-folding nil)
  '(lsp-enable-snippet nil)
  '(lsp-modeline-code-actions-enable nil)
  '(menu-bar-mode nil)
@@ -494,10 +513,10 @@ With argument ARG, do this that many times."
  '(scroll-bar-mode nil)
  '(sgml-basic-offset 2)
  '(tool-bar-mode nil)
- '(typescript-enabled-frameworks '(typescript mochikit exttypescript))
- '(typescript-indent-level 2)
  '(treemacs-is-never-other-window t)
  '(treemacs-space-between-root-nodes nil)
+ '(typescript-enabled-frameworks '(typescript mochikit exttypescript))
+ '(typescript-indent-level 2)
  '(uniquify-buffer-name-style 'forward nil (uniquify))
  '(widget-image-enable nil)
  '(yas-expand-snippet noop))
@@ -579,7 +598,7 @@ With argument ARG, do this that many times."
 
 (add-hook 'after-init-hook
           (lambda ()
-            (all-the-icons-ivy-setup)
+	    (all-the-icons-ivy-setup)
             (auto-compression-mode -1)
             (auto-encryption-mode -1)
             (blink-cursor-mode -1)
