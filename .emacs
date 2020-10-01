@@ -166,6 +166,7 @@ With argument ARG, do this that many times."
  (lambda (&rest unused)
    (indent-region (region-beginning) (region-end) nil)))
 
+
 ;;; mode hooks and config
 
 
@@ -322,11 +323,6 @@ With argument ARG, do this that many times."
    nil
    (lambda ()
      (setq gc-cons-threshold 16777216))))
-
-(defun term-send-cx ()
-  "Send a ctrl-x to the terminal.  Useful if you played yourself."
-
-  (term-send-raw-string ""))
 
 ;; run custom functions when some major modes are entered
 (add-hook 'scss-mode-hook 'my-css-mode-hook)
@@ -508,7 +504,7 @@ With argument ARG, do this that many times."
                             '(vc-mode vc-mode))))
          "")))))
  '(package-selected-packages
-   '(all-the-icons-ivy counsel all-the-icons company-prescient mmm-mode typescript-mode auto-dim-other-buffers lsp-mode swiper flymake-json editorconfig dotenv-mode web-mode js-doc projectile treemacs-projectile treemacs exec-path-from-shell 2048-game dockerfile-mode request flymake-stylelint company scss-mode markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
+   '(all-the-icons-ivy-rich all-the-icons-ivy counsel all-the-icons company-prescient mmm-mode typescript-mode auto-dim-other-buffers lsp-mode swiper flymake-json editorconfig dotenv-mode web-mode js-doc projectile treemacs-projectile treemacs exec-path-from-shell 2048-game dockerfile-mode request flymake-stylelint company scss-mode markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
  '(read-process-output-max (* 1024 1024) t)
  '(scroll-bar-mode nil)
  '(sgml-basic-offset 2)
