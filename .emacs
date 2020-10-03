@@ -25,6 +25,8 @@
 ;; code completion
 (require 'company)
 (require 'company-quickhelp)
+;; a better file-chooser experience
+(require 'counsel)
 ;; mode line cleaner-upper
 (require 'delight)
 ;; support nvm doing weird things to our shell $PATH but not our login session $PATH
@@ -78,6 +80,10 @@
 With argument ARG, do this that many times."
   (interactive "p")
   (delete-word (- arg)))
+
+(defun counsel-find-file-match-candidate (str)
+  "Return a regex that will match strings starting with STR.  Stops `counsel-find-file' from fuzzy-matching and returning stupid results."
+  (concat "^" (regexp-quote str)))
 
 (defun close-buffer ()
   "Closes current buffer without prompting."
@@ -228,10 +234,6 @@ With argument ARG, do this that many times."
               (locate-dominating-file buffer-file-name "coverage")
               "coverage/lcov.info"))))))
 
-  ;; enable multiple major modes (for css-in-js etc)
-;  (mmm-mode t)
-;  (mmm-add-mode-ext-class 'js-mode nil 'mmm-styled-mode)
-
   ;; I want the key command in the xref map instead of this one
   (define-key js-mode-map (kbd "M-.") nil))
 
@@ -294,8 +296,7 @@ With argument ARG, do this that many times."
   (projectile-mode)
 
   ;; code analysis via a language server
-;  (lsp)
-;  (lsp-completion-mode t)
+  (lsp)
 
   ;; add an eslint backend to flymake
 ;;  (flymake-eslint-enable)
@@ -337,6 +338,34 @@ With argument ARG, do this that many times."
 (add-hook 'minibuffer-exit-hook 'my-minibuf-exit-hook)
 
 ;; mmm-mode definitions
+(defun css-in-js-smie-rules (method argument)
+  (message "%s %s" method argument)
+  ;; in case it helps, point is located right before argument (if it's a token)
+  (cond
+   ((eq method :after)
+    ;; arg: a token.  return offset to use for indentation after arg
+    css-indent-offset)
+   ((eq method :before)
+    ;; arg: a token.  return offset to use to indent arg itself
+    css-indent-offset)
+   ((eq method :elem)
+    ;; buncha shit
+    c-basic-offset)
+   (t nil)))
+;;  (pcase method
+;;    (':elem css-indent-offset)
+;;    (:elem
+;;     (pcase argument
+;;       (arg
+;;        ;; return offset to use to indent function arguments
+;;        css-indent-offset)
+;;       (basic
+;;        ;; return basic indent step
+;;        css-indent-offset)))
+;;    (:list-intro
+;;     ;; arg: a token. return non-nil if the token is followed by a list of expressions (??)
+;;     nil)))
+
 (defun mmm-styled-components-indent ()
   (interactive)
   (save-excursion
@@ -352,25 +381,47 @@ With argument ARG, do this that many times."
       (back-to-indentation)
       (delete-char (- css-indent-offset)))))
 
+(define-derived-mode my-jsx-in-js-mmm-mode js-mode "jsx"
+  )
+
+(defun smie-ensure-minimum-indent ()
+  (message "doop")
+  (if (bolp)
+      (css-indent-offset)
+    nil))
+
 (define-derived-mode my-css-in-js-mmm-mode scss-mode "styled-component"
-  (add-to-list 'mmm-save-local-variables 'css-indent-offset)
-  (add-to-list 'mmm-save-local-variables '(indent-line-function region '(my-css-in-js-mmm-mode)))
-  (setq-local css-indent-offset 2)
-  
-  (setq-local indent-line-function 'mmm-styled-components-indent)
+;  (add-to-list 'mmm-save-local-variables '(smie-indent-functions region '(my-css-in-js-mmm-mode)))
+;  (add-to-list 'mmm-save-local-variables '(indent-line-function region '(my-css-in-js-mmm-mode)))
+;  (setq-local indent-line-function 'mmm-styled-components-indent)
+  (smie-setup css-smie-grammar #'css-in-js-smie-rules
+              :forward-token #'css-smie--forward-token
+              :backward-token #'css-smie--backward-token)
   (setq css-in-js-keymap (make-sparse-keymap))
   (use-local-map css-in-js-keymap)
-  (define-key css-in-js-keymap (kbd "<return>") 'electric-newline-and-maybe-indent)
+'  (define-key css-in-js-keymap (kbd "<return>") 'electric-newline-and-maybe-indent)
   (define-key css-in-js-keymap (kbd "<backtab>") 'mmm-styled-components-outdent))
 
 
-(add-to-list 'mmm-classes-alist
-      '(mmm-styled-mode
-         :submode my-css-in-js-mmm-mode
-         :creation-hook (lambda () (mmm-set-local-variables nil nil))
-         :front "\\(styled\\|css\\)[.()<>[:alnum:]]?+`"
-         :back "`;"))
-
+(add-to-list
+ 'mmm-classes-alist
+ '(mmm-styled-mode
+   :submode my-css-in-js-mmm-mode
+   :face mmm-code-submode-face
+   :creation-hook (lambda () (mmm-set-local-variables nil nil))
+   :front "\\(styled\\|css\\)[.()<>[:alnum:]]?+`"
+   :back "`;"))
+(add-to-list
+ 'mmm-classes-alist
+ '(mmm-jsx-mode
+   :submode my-jsx-in-js-mmm-mode
+   :face mmm-code-submode-face
+   :front "\\(return\s\\|n\s\\|(\n\s*\\)<"
+   :front-offset -1
+   :back ">\n?\s*)"
+   :back-offset 1))
+             
+(mmm-add-mode-ext-class 'typescript-mode nil 'mmm-jsx-mode)
 (mmm-add-mode-ext-class 'typescript-mode nil 'mmm-styled-mode)
 
 ;; associate some major modes with some file extensions
@@ -380,7 +431,7 @@ With argument ARG, do this that many times."
 (push '("\\.less\\'" . scss-mode) auto-mode-alist)
 (push '("\\.md\\'" . markdown-mode) auto-mode-alist)
 (push '("\\.y[a]?ml\\'" . yaml-mode) auto-mode-alist)
-(push '("\\.ts[x]?\\'" . typescript-mode) auto-mode-alist)
+;(push '("\\.ts[x]?\\'" . typescript-mode) auto-mode-alist)
 
 
 ;;; variables and faces
@@ -439,8 +490,10 @@ With argument ARG, do this that many times."
  '(company-quickhelp-color-foreground nil)
  '(company-quickhelp-delay 1.0)
  '(company-tooltip-align-annotations t)
+ '(counsel-find-file-ignore-regexp "\\\\(?:\\\\‘[#.]\\\\)\\\\|\\\\(?:[#~]\\\\’\\\\)")
  '(coverlay:mark-tested-lines nil)
  '(coverlay:untested-line-background-color "#ffe8e8")
+ '(css-indent-offset 2)
  '(cua-mode t nil (cua-base))
  '(debug-on-error t)
  '(exec-path-from-shell-check-startup-files nil)
@@ -474,10 +527,12 @@ With argument ARG, do this that many times."
  '(help-at-pt-timer-delay 0.25)
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
+ '(ivy-extra-directories nil)
  '(ivy-magic-tilde nil)
- '(ivy-sort-matches-functions-alist
-   '((t)
-     (counsel-find-file . ivy-sort-function-buffer)))
+ '(ivy-re-builders-alist
+   '((counsel-find-file . counsel-find-file-match-candidate)
+     (t)) t)
+ '(ivy-sort-matches-functions-alist '((t) (counsel-find-file . ivy-sort-function-buffer)))
  '(js-chain-indent nil)
  '(js-enabled-frameworks nil)
  '(js-indent-level 2)
@@ -489,6 +544,10 @@ With argument ARG, do this that many times."
  '(lsp-enable-snippet nil)
  '(lsp-modeline-code-actions-enable nil)
  '(menu-bar-mode nil)
+ '(mmm-mode-ext-classes-alist
+   '((typescript-mode nil mmm-styled-mode)
+     (typescript-mode nil mmm-jsx-mode)) nil (mmm-mode))
+ '(mmm-parse-when-idle t)
  '(mmm-submode-decoration-level 0)
  '(mode-line-format
    '((:eval
@@ -507,6 +566,7 @@ With argument ARG, do this that many times."
    '(all-the-icons-ivy-rich all-the-icons-ivy counsel all-the-icons company-prescient mmm-mode typescript-mode auto-dim-other-buffers lsp-mode swiper flymake-json editorconfig dotenv-mode web-mode js-doc projectile treemacs-projectile treemacs exec-path-from-shell 2048-game dockerfile-mode request flymake-stylelint company scss-mode markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
  '(read-process-output-max (* 1024 1024) t)
  '(scroll-bar-mode nil)
+ '(scss-compile-at-save nil)
  '(sgml-basic-offset 2)
  '(tool-bar-mode nil)
  '(treemacs-is-never-other-window t)
