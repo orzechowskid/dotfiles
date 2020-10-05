@@ -385,6 +385,12 @@ With argument ARG, do this that many times."
 
 ;;; variables and faces
 
+;; highest-priority font first
+(setq my-fonts '("Source Code Pro Light 12"
+                 "Symbola 12"))
+(create-fontset-from-fontset-spec standard-fontset-spec)
+(dolist (font (reverse my-fonts))
+  (set-fontset-font "fontset-standard" 'unicode font nil 'prepend))
 
 ;; HTML codes for the Source Code Pro glyphs to use as fringe indicators
 (set-display-table-slot standard-display-table 'truncation 8230)
@@ -400,7 +406,7 @@ With argument ARG, do this that many times."
                '(vertical-scroll-bars . nil)
                '(internal-border-width . 20)
                '(drag-internal-border . t)
-               '(font . "Source Code Pro Light 12")))
+               '(font . "fontset-standard")))
 (set-frame-parameter (selected-frame)
                      'internal-border-width 20)
 
@@ -475,9 +481,6 @@ With argument ARG, do this that many times."
  '(indent-tabs-mode nil)
  '(inhibit-startup-screen t)
  '(ivy-magic-tilde nil)
- '(ivy-sort-matches-functions-alist
-   '((t)
-     (counsel-find-file . ivy-sort-function-buffer)))
  '(js-chain-indent nil)
  '(js-enabled-frameworks nil)
  '(js-indent-level 2)
