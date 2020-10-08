@@ -171,19 +171,19 @@ With argument ARG, do this that many times."
 ;;; mode hooks and config
 
 
-(defun my-css-mode-hook ()
+(defun my/css-mode-hook ()
   "Do some things when opening [S]CSS files."
   (company-mode t)
   (eldoc-mode t)
   (flymake-stylelint-enable)
   (subword-mode t))
 
-(defun my-flymake-mode-hook ()
+(defun my/flymake-mode-hook ()
   "Do some things when enabling Flymake."
   (help-at-pt-set-timer)
   (setq-local help-at-pt-display-when-idle t))
 
-(defun my-javascript-mode-hook ()
+(defun my/javascript-mode-hook ()
   "Do some things when opening JavaScript files."
 ;;  ;; run `eslint --fix' upon save
 ;;  (add-hook 'after-save-hook 'eslint-fix-buffer t t)
@@ -236,7 +236,7 @@ With argument ARG, do this that many times."
   ;; I want the key command in the xref map instead of this one
   (define-key js-mode-map (kbd "M-.") nil))
 
-(defun my-json-mode-hook ()
+(defun my/json-mode-hook ()
   "Do some things when opening JSON files."
 
   (make-local-variable 'js-indent-level)
@@ -247,13 +247,13 @@ With argument ARG, do this that many times."
   ;; enable camelCase-aware navigation
   (subword-mode t))
 
-(defun my-js-json-mode-hook ()
+(defun my/js-json-mode-hook ()
   "Emacs' json major mode descends from its js major mode, so the hook situation is all messed up without something like this."
   (if (string-match-p "json\\'" (or (buffer-file-name) ""))
-      (my-json-mode-hook)
-    (my-javascript-mode-hook)))
+      (my/json-mode-hook)
+    (my/javascript-mode-hook)))
 
-(defun common-lisp-mode-hook ()
+(defun my/common-lisp-mode-hook ()
   "Do some things when entering a Lisp mode."
 
   ;; enable code-completion mode
@@ -267,7 +267,7 @@ With argument ARG, do this that many times."
   (when (not (string= (buffer-name) "*scratch*"))
     (flymake-mode t)))
 
-(defun my-terminal-mode-hook ()
+(defun my/terminal-mode-hook ()
   "Do some things when opening a terminal."
 
   ;; for terminals only, we want the default face to be reversed
@@ -288,7 +288,7 @@ With argument ARG, do this that many times."
                   (format "%%b")
                   (format " "))))))
 
-(defun my-ts-mode-hook ()
+(defun my/ts-mode-hook ()
   "Do some things when editing a Typescript file."
 
   ;; treat this file as part of a larger project (when applicable)
@@ -309,13 +309,13 @@ With argument ARG, do this that many times."
   ;; camelCase-aware navigation
   (subword-mode t))
 
-(defun my-minibuf-entrance-hook ()
+(defun my/minibuf-entrance-hook ()
   "Do some things when activating the minibuffer."
 
   ;; stolen from Doom
   (setq gc-cons-threshold most-positive-fixnum))
 
-(defun my-minibuf-exit-hook ()
+(defun my/minibuf-exit-hook ()
   "Do some things when leaving the minibuffer."
 
   ;; stolen from Doom
@@ -338,16 +338,16 @@ With argument ARG, do this that many times."
   (push '("\\.ts[x]?\\'" . typescript-mode) auto-mode-alist)
 
   ;; run custom functions when some major modes are entered
-  (add-hook 'scss-mode-hook 'my-css-mode-hook)
-  (add-hook 'emacs-lisp-mode-hook 'common-lisp-mode-hook)
-  (add-hook 'js-mode-hook 'my-js-json-mode-hook)
-  (add-hook 'json-mode-hook 'my-js-json-mode-hook)
-  (add-hook 'lisp-mode-hook 'common-lisp-mode-hook)
-  (add-hook 'term-mode-hook 'my-terminal-mode-hook)
-  (add-hook 'flymake-mode-hook 'my-flymake-mode-hook)
-  (add-hook 'typescript-mode-hook 'my-ts-mode-hook)
-  (add-hook 'minibuffer-setup-hook 'my-minibuf-entrance-hook)
-  (add-hook 'minibuffer-exit-hook 'my-minibuf-exit-hook))
+  (add-hook 'scss-mode-hook 'my/css-mode-hook)
+  (add-hook 'emacs-lisp-mode-hook 'my/common-lisp-mode-hook)
+  (add-hook 'js-mode-hook 'my/js-json-mode-hook)
+  (add-hook 'json-mode-hook 'my/js-json-mode-hook)
+  (add-hook 'lisp-mode-hook 'my/common-lisp-mode-hook)
+  (add-hook 'term-mode-hook 'my/terminal-mode-hook)
+  (add-hook 'flymake-mode-hook 'my/flymake-mode-hook)
+  (add-hook 'typescript-mode-hook 'my/ts-mode-hook)
+  (add-hook 'minibuffer-setup-hook 'my/minibuf-entrance-hook)
+  (add-hook 'minibuffer-exit-hook 'my/minibuf-exit-hook))
 
 
 (defun init/config-fonts ()
