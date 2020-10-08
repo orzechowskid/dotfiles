@@ -5,94 +5,38 @@
 
 (prefer-coding-system 'utf-8)
 (set-language-environment "UTF-8")
-
-
-;;; package things
-
-
 (require 'package)
 
-(defun init/config-packages ()
-  "Configure the loading of external packages."
 
-  (package-initialize)
-
-  ;; enable package-loading from MELPA
-  (push '("melpa" . "https://melpa.org/packages/") package-archives)
-
-  ;; enable package-loading from a local directory
-  (push "~/.emacs.d/elisp" load-path)
-
-  ;; these things are used by multiple major modes and/or get configured before any
-  ;; buffers are opened, so they're not good candidates for autoload
-
-  ;; code completion
-  (require 'company)
-  (require 'company-quickhelp)
-  ;; mode line cleaner-upper
-  (require 'delight)
-  ;; support nvm doing weird things to our shell $PATH but not our login session $PATH
-  (require 'exec-path-from-shell)
-  ;; linting
-  (require 'flymake)
-  (require 'flymake-stylelint) ;; eyyyy don't forget this is not on MELPA yet and needs to be installed manually
-  ;; code analysis
-  (require 'lsp-mode)
-  (require 'lsp-javascript)
-  ;; multiple modes in the same buffer
-  (require 'mmm-mode)
-  ;; project-centric editing
-  (require 'projectile)
-  ;; change how files with the same basename are differentiated
-  (require 'uniquify)
-
-  ;; these guys, however...
-
-  (autoload 'coverlay-minor-mode "coverlay"
-    "Use the coverlay package to provide 'coverlay-minor-mode on-demand."
-    t)
-  (autoload 'flymake-eslint-enable "flymake-eslint"
-    "Use the flymake-eslint package to provide 'flymake-eslint-enable on-demand."
-    t)
-  (autoload 'flymake-stylelint-enable "flymake-stylelint"
-    "Use the flymake-stylelint package to provide 'flymake-stylelint-enable on-demand."
-    t)
-  (autoload 'json-mode "json-mode"
-    "Use the json-mode package to provide 'json-mode on-demand."
-    t)
-  (autoload 'markdown-mode "markdown-mode"
-    "Use the markdown-mode package to provide 'markdown-mode on-demand."
-    t)
-  (autoload 'scss-mode "scss-mode"
-    "Use the scss-mode package to provide 'scss-mode on-demand."
-    t)
-  (autoload 'yaml-mode "yaml-mode"
-    "Use the yaml-mode package to provide 'yaml-mode on-demand."
-    t))
+;;; mode hooks, utility functions, and advices
 
 
-;;; utility functions and advices
-
-
-(defun backward-delete-word (arg)
+(defun my/backward-delete-word (arg)
   "Delete characters backward until encountering the beginning of a word.
 With argument ARG, do this that many times."
+
   (interactive "p")
   (delete-word (- arg)))
 
-(defun close-buffer ()
+
+(defun my/close-buffer ()
   "Closes current buffer without prompting."
+
   (interactive)
   (kill-buffer (current-buffer)))
 
-(defun delete-word (arg)
+
+(defun my/delete-word (arg)
   "Delete characters forward until encountering the end of a word.
 With argument ARG, do this that many times."
+
   (interactive "p")
   (delete-region (point) (progn (forward-word arg) (point))))
 
-(defun eslint-fix-buffer ()
+
+(defun my/eslint-fix-buffer ()
   "Run `eslint --fix' on current buffer."
+
   (interactive)
   (if (executable-find "eslint_d")
       (progn
@@ -100,20 +44,25 @@ With argument ARG, do this that many times."
         (revert-buffer t t t))
     (message "eslint_d not found")))
 
-(defun ignore-file-p (name path)
+
+(defun my/ignore-file-p (name path)
   "Tell projectile to ignore some stuff based on the NAME and PATH of a file in the project."
+
   (or (string= name "node_modules")
       (string= name ".git")
       (string= name ".circleci")
       (string= name "coverage")))
 
-(defun noop ()
+
+(defun my/noop ()
   "Does nothing."
+
   (interactive))
 
-;; header- and mode-line rendering function
-(defun status-line-render (left-content right-content)
+
+(defun my/status-line-render (left-content right-content)
   "Render LEFT-CONTENT and RIGHT-CONTENT, appropriately justified."
+
   (let* ((left-str (format-mode-line left-content))
          (right-str (format-mode-line right-content))
          (available-width
@@ -126,49 +75,11 @@ With argument ARG, do this that many times."
             (format (format "%%%ds" available-width) "")
             (propertize right-str 'face nil))))
 
-;; prefer contents of help-at-point (e.g., Flymake) over whatever eldoc outputs
-(advice-add 'eldoc-message :around
-            (lambda (oldfn doc-msg)
-              (let ((echo-help-string (help-at-pt-string)))
-                (if echo-help-string
-                    (display-local-help)
-                  (funcall oldfn doc-msg)))))
 
-(defun term-send-cx ()
+(defun my/term-send-cx ()
   "Sends Ctrl-x to a term buffer.  Useful if you accidentally open nano."
   (interactive)
   (term-send-raw-string ""))
-
-;; shorten some major-mode modeline strings
-(delight '((emacs-lisp-mode "ELisp")))
-
-;; remove some minor-mode modeline strings
-(delight '((subword-mode nil "subword")
-           (company-mode nil "company")
-           (lsp-mode nil "lsp")
-           (mmm-mode nil nil)
-           (projectile-mode nil t)
-           (coverlay-minor-mode nil "coverlay")
-           (eldoc-mode nil "eldoc")))
-
-;; shorten dynamically-generated Flymake minor-mode string
-(advice-add 'flymake--mode-line-format :filter-return
-            (lambda (&rest return-value)
-              (setf
-               (seq-elt
-                (car return-value)
-                0)
-               " ✓")
-              return-value))
-
-(advice-add
- 'yank
- :after
- (lambda (&rest unused)
-   (indent-region (region-beginning) (region-end) nil)))
-
-
-;;; mode hooks and config
 
 
 (defun my/css-mode-hook ()
@@ -178,15 +89,17 @@ With argument ARG, do this that many times."
   (flymake-stylelint-enable)
   (subword-mode t))
 
+
 (defun my/flymake-mode-hook ()
   "Do some things when enabling Flymake."
   (help-at-pt-set-timer)
   (setq-local help-at-pt-display-when-idle t))
 
+
 (defun my/javascript-mode-hook ()
   "Do some things when opening JavaScript files."
 ;;  ;; run `eslint --fix' upon save
-;;  (add-hook 'after-save-hook 'eslint-fix-buffer t t)
+;;  (add-hook 'after-save-hook 'my/eslint-fix-buffer t t)
 
   ;; assume JSX even if you don't see an import/require of React
   (js-jsx-enable)
@@ -236,6 +149,7 @@ With argument ARG, do this that many times."
   ;; I want the key command in the xref map instead of this one
   (define-key js-mode-map (kbd "M-.") nil))
 
+
 (defun my/json-mode-hook ()
   "Do some things when opening JSON files."
 
@@ -247,11 +161,13 @@ With argument ARG, do this that many times."
   ;; enable camelCase-aware navigation
   (subword-mode t))
 
+
 (defun my/js-json-mode-hook ()
   "Emacs' json major mode descends from its js major mode, so the hook situation is all messed up without something like this."
   (if (string-match-p "json\\'" (or (buffer-file-name) ""))
       (my/json-mode-hook)
     (my/javascript-mode-hook)))
+
 
 (defun my/common-lisp-mode-hook ()
   "Do some things when entering a Lisp mode."
@@ -266,6 +182,7 @@ With argument ARG, do this that many times."
   ;; linter (most of the time)
   (when (not (string= (buffer-name) "*scratch*"))
     (flymake-mode t)))
+
 
 (defun my/terminal-mode-hook ()
   "Do some things when opening a terminal."
@@ -284,9 +201,10 @@ With argument ARG, do this that many times."
   ;; we don't need line/column numbers in our header line either
   (setq-local header-line-format
               '((:eval
-                 (status-line-render
+                 (my/status-line-render
                   (format "%%b")
                   (format " "))))))
+
 
 (defun my/ts-mode-hook ()
   "Do some things when editing a Typescript file."
@@ -309,11 +227,13 @@ With argument ARG, do this that many times."
   ;; camelCase-aware navigation
   (subword-mode t))
 
+
 (defun my/minibuf-entrance-hook ()
   "Do some things when activating the minibuffer."
 
   ;; stolen from Doom
   (setq gc-cons-threshold most-positive-fixnum))
+
 
 (defun my/minibuf-exit-hook ()
   "Do some things when leaving the minibuffer."
@@ -324,6 +244,9 @@ With argument ARG, do this that many times."
    nil
    (lambda ()
      (setq gc-cons-threshold 16777216))))
+
+
+;;; initialization functions
 
 
 (defun init/config-file-associations ()
@@ -402,6 +325,161 @@ With argument ARG, do this that many times."
     16 16 'center))
 
 
+(defun init/config-keyboard-shortcuts ()
+  "Config some personal-preference keyboard shortcuts."
+
+  ;; global shortcuts
+
+  ;; Ctrl-Backspace -> delete a word instead of killing it
+  (global-set-key [C-backspace] 'my/backward-delete-word)
+  ;; Ctrl-Delete -> forward-delete a word instead of killing it
+  (global-set-key [C-delete] 'my/delete-word)
+  ;; Ctrl-Tab -> next window
+  (global-set-key [C-tab] 'other-window)
+  ;; Ctrl-Shift-Tab -> previous window
+  (global-set-key [C-S-iso-lefttab]
+                  (lambda ()
+                    (interactive)
+                    (other-window -1)))
+  ;; Ctrl-PgDn -> next window
+  (global-set-key [C-next] 'other-window)
+  ;; Ctrl-PgUp -> previous window
+  (global-set-key [C-prior]
+                  (lambda ()
+                    (interactive)
+                    (other-window -1)))
+  ;; Ctrl-a -> select entire buffer
+  (global-set-key (kbd "C-a") 'mark-whole-buffer)
+  ;; I don't use these and their minibuffer messages annoy me
+  (global-set-key (kbd "C-b") 'my/noop)
+  (global-set-key (kbd "C-f") 'my/noop)
+  (global-set-key (kbd "C-n") 'my/noop)
+  (global-set-key (kbd "C-p") 'my/noop)
+  (global-set-key (kbd "C-x C-k") 'my/noop)
+  ;; use a richer file-finder
+  (global-set-key (kbd "C-x C-f") 'counsel-find-file)
+  ;; Ctrl-w -> close buffer.  CUA-ish
+  (global-set-key (kbd "C-w") 'my/close-buffer)
+
+  ;; mode-specific shortcuts
+
+  ;; use useful Flycheck key bindings in Flymake (when flymake-mode is enabled)
+  (define-key flymake-mode-map (kbd "C-c ! n") 'flymake-goto-next-error)
+  (define-key flymake-mode-map (kbd "C-c ! p") 'flymake-goto-prev-error)
+  ;; keyboard shortcut to force auto-completion (when company-mode is enabled)
+  (define-key company-mode-map (kbd "M-/") 'company-complete)
+  ;; keyboard shortcut to find a file in the current project, like VSCode does (when projectile-mode is enabled
+  (define-key projectile-mode-map (kbd "C-p") 'projectile-find-file))
+
+
+(defun init/config-modeline ()
+  "Config some mode- and header-line stuff."
+
+  ;; shorten some major-mode modeline strings
+  (delight '((emacs-lisp-mode "ELisp")))
+
+  ;; remove some minor-mode modeline strings
+  (delight
+   '((subword-mode nil "subword")
+     (company-mode nil "company")
+     (lsp-mode nil "lsp")
+     (mmm-mode nil nil)
+     (projectile-mode nil t)
+     (coverlay-minor-mode nil "coverlay")
+     (eldoc-mode nil "eldoc")))
+
+  ;; shorten dynamically-generated Flymake minor-mode string
+  (advice-add
+   'flymake--mode-line-format :filter-return
+   (lambda (&rest return-value)
+     (setf
+      (seq-elt
+       (car return-value)
+       0)
+      " ✓")
+     return-value))
+
+  (advice-add
+   'yank
+   :after
+   (lambda (&rest unused)
+     (indent-region (region-beginning) (region-end) nil))))
+
+
+(defun init/config-packages ()
+  "Configure the loading of external packages."
+
+  (package-initialize)
+
+  ;; enable package-loading from MELPA
+  (push '("melpa" . "https://melpa.org/packages/") package-archives)
+
+  ;; enable package-loading from a local directory
+  (push "~/.emacs.d/elisp" load-path)
+
+  ;; these things are used by multiple major modes and/or get configured before any
+  ;; buffers are opened, so they're not good candidates for autoload
+
+  ;; code completion
+  (require 'company)
+  (require 'company-quickhelp)
+  ;; mode line cleaner-upper
+  (require 'delight)
+  ;; support nvm doing weird things to our shell $PATH but not our login session $PATH
+  (require 'exec-path-from-shell)
+  ;; linting
+  (require 'flymake)
+  (require 'flymake-stylelint) ;; eyyyy don't forget this is not on MELPA yet and needs to be installed manually
+  ;; code analysis
+  (require 'lsp-mode)
+  (require 'lsp-javascript)
+  ;; multiple modes in the same buffer
+  (require 'mmm-mode)
+  ;; project-centric editing
+  (require 'projectile)
+  ;; change how files with the same basename are differentiated
+  (require 'uniquify)
+
+  ;; these guys, however...
+
+  (autoload 'coverlay-minor-mode "coverlay"
+    "Use the coverlay package to provide 'coverlay-minor-mode on-demand."
+    t)
+  (autoload 'flymake-eslint-enable "flymake-eslint"
+    "Use the flymake-eslint package to provide 'flymake-eslint-enable on-demand."
+    t)
+  (autoload 'flymake-stylelint-enable "flymake-stylelint"
+    "Use the flymake-stylelint package to provide 'flymake-stylelint-enable on-demand."
+    t)
+  (autoload 'json-mode "json-mode"
+    "Use the json-mode package to provide 'json-mode on-demand."
+    t)
+  (autoload 'markdown-mode "markdown-mode"
+    "Use the markdown-mode package to provide 'markdown-mode on-demand."
+    t)
+  (autoload 'scss-mode "scss-mode"
+    "Use the scss-mode package to provide 'scss-mode on-demand."
+    t)
+  (autoload 'yaml-mode "yaml-mode"
+    "Use the yaml-mode package to provide 'yaml-mode on-demand."
+    t))
+
+
+(defun init/config-whatever-else ()
+  "Kind of a dumping ground tbh."
+
+  ;; prefer contents of help-at-point (e.g., Flymake) over whatever eldoc outputs
+  (advice-add 'eldoc-message :around
+              (lambda (oldfn doc-msg)
+                (let ((echo-help-string (help-at-pt-string)))
+                  (if echo-help-string
+                      (display-local-help)
+                    (funcall oldfn doc-msg))))))
+
+
+;;; variables and faces set via Customize
+
+
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -438,7 +516,7 @@ With argument ARG, do this that many times."
  '(gc-cons-threshold 16777216)
  '(header-line-format
    '((:eval
-      (status-line-render
+      (my/status-line-render
        (format "%s %%b"
                (if
                    (and
@@ -466,7 +544,7 @@ With argument ARG, do this that many times."
  '(mmm-submode-decoration-level 0)
  '(mode-line-format
    '((:eval
-      (status-line-render
+      (my/status-line-render
        (format-mode-line
         (list " " mode-name minor-mode-alist))
        (if
@@ -490,6 +568,7 @@ With argument ARG, do this that many times."
  '(uniquify-buffer-name-style 'forward nil (uniquify))
  '(widget-image-enable nil)
  '(yas-expand-snippet noop))
+
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
@@ -522,75 +601,30 @@ With argument ARG, do this that many times."
  '(treemacs-root-face ((t (:inherit font-lock-constant-face :underline t :weight bold)))))
 
 
-;;; key commands
-
-(defun init/config-keyboard-shortcuts ()
-  "Config some personal-preference keyboard shortcuts."
-
-  ;; global shortcuts
-
-  ;; Ctrl-Backspace -> delete a word instead of killing it
-  (global-set-key [C-backspace] 'backward-delete-word)
-  ;; Ctrl-Delete -> forward-delete a word instead of killing it
-  (global-set-key [C-delete] 'delete-word)
-  ;; Ctrl-Tab -> next window
-  (global-set-key [C-tab] 'other-window)
-  ;; Ctrl-Shift-Tab -> previous window
-  (global-set-key [C-S-iso-lefttab]
-                  (lambda ()
-                    (interactive)
-                    (other-window -1)))
-  ;; Ctrl-PgDn -> next window
-  (global-set-key [C-next] 'other-window)
-  ;; Ctrl-PgUp -> previous window
-  (global-set-key [C-prior]
-                  (lambda ()
-                    (interactive)
-                    (other-window -1)))
-  ;; Ctrl-a -> select entire buffer
-  (global-set-key (kbd "C-a") 'mark-whole-buffer)
-  ;; I don't use these and their minibuffer messages annoy me
-  (global-set-key (kbd "C-b") 'noop)
-  (global-set-key (kbd "C-f") 'noop)
-  (global-set-key (kbd "C-n") 'noop)
-  (global-set-key (kbd "C-p") 'noop)
-  (global-set-key (kbd "C-x C-k") 'noop)
-  ;; use a richer file-finder
-  (global-set-key (kbd "C-x C-f") 'counsel-find-file)
-  ;; Ctrl-w -> close buffer.  CUA-ish
-  (global-set-key (kbd "C-w") 'close-buffer)
-
-  ;; mode-specific shortcuts
-
-  ;; use useful Flycheck key bindings in Flymake (when flymake-mode is enabled)
-  (define-key flymake-mode-map (kbd "C-c ! n") 'flymake-goto-next-error)
-  (define-key flymake-mode-map (kbd "C-c ! p") 'flymake-goto-prev-error)
-  ;; keyboard shortcut to force auto-completion (when company-mode is enabled)
-  (define-key company-mode-map (kbd "M-/") 'company-complete)
-  ;; keyboard shortcut to find a file in the current project, like VSCode does (when projectile-mode is enabled
-  (define-key projectile-mode-map (kbd "C-p") 'projectile-find-file))
+;;; let's go!
 
 
-;;; post-init
+(add-hook
+ 'after-init-hook
+ (lambda ()
+   (init/config-packages)
+   (init/config-fonts)
+   (init/config-file-associations)
+   (init/config-keyboard-shortcuts)
+   (init/config-modeline)
+   (init/config-whatever-else)
+   (all-the-icons-ivy-setup)
+   (auto-compression-mode -1)
+   (auto-encryption-mode -1)
+   (blink-cursor-mode -1)
+   (file-name-shadow-mode -1)
+   (global-auto-composition-mode -1)
+   (package-refresh-contents t)
+   ;; nvm/node.js
+   (exec-path-from-shell-initialize)
+   ;; keep me last
+   (message "startup time: %s" (emacs-init-time))))
 
-
-(add-hook 'after-init-hook
-          (lambda ()
-            (init/config-packages)
-            (init/config-fonts)
-            (init/config-file-associations)
-            (init/config-keyboard-shortcuts)
-	    (all-the-icons-ivy-setup)
-            (auto-compression-mode -1)
-            (auto-encryption-mode -1)
-            (blink-cursor-mode -1)
-            (file-name-shadow-mode -1)
-            (global-auto-composition-mode -1)
-            (package-refresh-contents t)
-            ;; nvm/node.js
-            (exec-path-from-shell-initialize)
-            ;; keep me last
-            (message "startup time: %s" (emacs-init-time))))
 
 (provide 'emacs)
 ;;; .emacs ends here
