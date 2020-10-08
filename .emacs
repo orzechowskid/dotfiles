@@ -10,64 +10,65 @@
 ;;; package things
 
 
-(package-initialize)
-
-;; enable package-loading from MELPA
 (require 'package)
-(push '("melpa" . "https://melpa.org/packages/") package-archives)
 
-(push "~/.emacs.d/elisp" load-path)
+(defun init/config-packages ()
+  "Configure the loading of external packages."
 
+  (package-initialize)
 
-;; these things are used by multiple major modes and/or get configured before any
-;; buffers are opened, so they're not good candidates for autoload
+  ;; enable package-loading from MELPA
+  (push '("melpa" . "https://melpa.org/packages/") package-archives)
 
-;; code completion
-(require 'company)
-(require 'company-quickhelp)
-;; mode line cleaner-upper
-(require 'delight)
-;; support nvm doing weird things to our shell $PATH but not our login session $PATH
-(require 'exec-path-from-shell)
-;; linting
-(require 'flymake)
-(require 'flymake-stylelint) ;; eyyyy don't forget this is not on MELPA yet and needs to be installed manually
-;; code analysis
-(require 'lsp-mode)
-(require 'lsp-javascript)
-;; multiple modes in the same buffer
-(require 'mmm-mode)
-;; project-centric editing
-(require 'projectile)
-;; change how files with the same basename are differentiated
-(require 'uniquify)
+  ;; enable package-loading from a local directory
+  (push "~/.emacs.d/elisp" load-path)
 
-;; to configure mmm
-(require 'scss-mode)
+  ;; these things are used by multiple major modes and/or get configured before any
+  ;; buffers are opened, so they're not good candidates for autoload
 
-;; these guys, however...
+  ;; code completion
+  (require 'company)
+  (require 'company-quickhelp)
+  ;; mode line cleaner-upper
+  (require 'delight)
+  ;; support nvm doing weird things to our shell $PATH but not our login session $PATH
+  (require 'exec-path-from-shell)
+  ;; linting
+  (require 'flymake)
+  (require 'flymake-stylelint) ;; eyyyy don't forget this is not on MELPA yet and needs to be installed manually
+  ;; code analysis
+  (require 'lsp-mode)
+  (require 'lsp-javascript)
+  ;; multiple modes in the same buffer
+  (require 'mmm-mode)
+  ;; project-centric editing
+  (require 'projectile)
+  ;; change how files with the same basename are differentiated
+  (require 'uniquify)
 
-(autoload 'coverlay-minor-mode "coverlay"
-  "Use the coverlay package to provide 'coverlay-minor-mode on-demand."
-  t)
-(autoload 'flymake-eslint-enable "flymake-eslint"
-  "Use the flymake-eslint package to provide 'flymake-eslint-enable on-demand."
-  t)
-(autoload 'flymake-stylelint-enable "flymake-stylelint"
-  "Use the flymake-stylelint package to provide 'flymake-stylelint-enable on-demand."
-  t)
-(autoload 'json-mode "json-mode"
-  "Use the json-mode package to provide 'json-mode on-demand."
-  t)
-(autoload 'markdown-mode "markdown-mode"
-  "Use the markdown-mode package to provide 'markdown-mode on-demand."
-  t)
-(autoload 'scss-mode "scss-mode"
-  "Use the scss-mode package to provide 'scss-mode on-demand."
-  t)
-(autoload 'yaml-mode "yaml-mode"
-  "Use the yaml-mode package to provide 'yaml-mode on-demand."
-  t)
+  ;; these guys, however...
+
+  (autoload 'coverlay-minor-mode "coverlay"
+    "Use the coverlay package to provide 'coverlay-minor-mode on-demand."
+    t)
+  (autoload 'flymake-eslint-enable "flymake-eslint"
+    "Use the flymake-eslint package to provide 'flymake-eslint-enable on-demand."
+    t)
+  (autoload 'flymake-stylelint-enable "flymake-stylelint"
+    "Use the flymake-stylelint package to provide 'flymake-stylelint-enable on-demand."
+    t)
+  (autoload 'json-mode "json-mode"
+    "Use the json-mode package to provide 'json-mode on-demand."
+    t)
+  (autoload 'markdown-mode "markdown-mode"
+    "Use the markdown-mode package to provide 'markdown-mode on-demand."
+    t)
+  (autoload 'scss-mode "scss-mode"
+    "Use the scss-mode package to provide 'scss-mode on-demand."
+    t)
+  (autoload 'yaml-mode "yaml-mode"
+    "Use the yaml-mode package to provide 'yaml-mode on-demand."
+    t))
 
 
 ;;; utility functions and advices
@@ -324,112 +325,82 @@ With argument ARG, do this that many times."
    (lambda ()
      (setq gc-cons-threshold 16777216))))
 
-;; run custom functions when some major modes are entered
-(add-hook 'scss-mode-hook 'my-css-mode-hook)
-(add-hook 'emacs-lisp-mode-hook 'common-lisp-mode-hook)
-(add-hook 'js-mode-hook 'my-js-json-mode-hook)
-(add-hook 'json-mode-hook 'my-js-json-mode-hook)
-(add-hook 'lisp-mode-hook 'common-lisp-mode-hook)
-(add-hook 'term-mode-hook 'my-terminal-mode-hook)
-(add-hook 'flymake-mode-hook 'my-flymake-mode-hook)
-(add-hook 'typescript-mode-hook 'my-ts-mode-hook)
-(add-hook 'minibuffer-setup-hook 'my-minibuf-entrance-hook)
-(add-hook 'minibuffer-exit-hook 'my-minibuf-exit-hook)
 
-;; mmm-mode definitions
-(defun mmm-styled-components-indent ()
-  (interactive)
-  (save-excursion
-    (beginning-of-line)
-    (insert (format (format "%%%ds" css-indent-offset) "")))
-  (when (< (current-column) (current-indentation))
-    (back-to-indentation)))
+(defun init/config-file-associations ()
+  "Configure what happens when a certain file type is opened."
 
-(defun mmm-styled-components-outdent ()
-  (interactive)
-  (when (>= (current-indentation) css-indent-offset)
-    (save-excursion
-      (back-to-indentation)
-      (delete-char (- css-indent-offset)))))
+  (push '("\\.js[x]?\\'" . js-mode) auto-mode-alist)
+  (push '("\\.json\\'" . json-mode) auto-mode-alist)
+  (push '("\\.[s]?css\\'" . scss-mode) auto-mode-alist)
+  (push '("\\.less\\'" . scss-mode) auto-mode-alist)
+  (push '("\\.md\\'" . markdown-mode) auto-mode-alist)
+  (push '("\\.y[a]?ml\\'" . yaml-mode) auto-mode-alist)
+  (push '("\\.ts[x]?\\'" . typescript-mode) auto-mode-alist)
 
-(define-derived-mode my-css-in-js-mmm-mode scss-mode "styled-component"
-  (add-to-list 'mmm-save-local-variables 'css-indent-offset)
-  (add-to-list 'mmm-save-local-variables '(indent-line-function region '(my-css-in-js-mmm-mode)))
-  (setq-local css-indent-offset 2)
-  
-  (setq-local indent-line-function 'mmm-styled-components-indent)
-  (setq css-in-js-keymap (make-sparse-keymap))
-  (use-local-map css-in-js-keymap)
-  (define-key css-in-js-keymap (kbd "<return>") 'electric-newline-and-maybe-indent)
-  (define-key css-in-js-keymap (kbd "<backtab>") 'mmm-styled-components-outdent))
+  ;; run custom functions when some major modes are entered
+  (add-hook 'scss-mode-hook 'my-css-mode-hook)
+  (add-hook 'emacs-lisp-mode-hook 'common-lisp-mode-hook)
+  (add-hook 'js-mode-hook 'my-js-json-mode-hook)
+  (add-hook 'json-mode-hook 'my-js-json-mode-hook)
+  (add-hook 'lisp-mode-hook 'common-lisp-mode-hook)
+  (add-hook 'term-mode-hook 'my-terminal-mode-hook)
+  (add-hook 'flymake-mode-hook 'my-flymake-mode-hook)
+  (add-hook 'typescript-mode-hook 'my-ts-mode-hook)
+  (add-hook 'minibuffer-setup-hook 'my-minibuf-entrance-hook)
+  (add-hook 'minibuffer-exit-hook 'my-minibuf-exit-hook))
 
 
-(add-to-list 'mmm-classes-alist
-      '(mmm-styled-mode
-         :submode my-css-in-js-mmm-mode
-         :creation-hook (lambda () (mmm-set-local-variables nil nil))
-         :front "\\(styled\\|css\\)[.()<>[:alnum:]]?+`"
-         :back "`;"))
+(defun init/config-fonts ()
+  "Configure font, face, and frame preferences."
 
-(mmm-add-mode-ext-class 'typescript-mode nil 'mmm-styled-mode)
+  ;; set default and fallback fonts
+  ;; highest-priority font first
+  (let ((my-fonts '("Source Code Pro Light 12"
+                    "Symbola 12")))
+    (create-fontset-from-fontset-spec standard-fontset-spec)
+    (dolist (font (reverse my-fonts))
+      (set-fontset-font "fontset-standard" 'unicode font nil 'prepend)))
 
-;; associate some major modes with some file extensions
-(push '("\\.js[x]?\\'" . js-mode) auto-mode-alist)
-(push '("\\.json\\'" . json-mode) auto-mode-alist)
-(push '("\\.[s]?css\\'" . scss-mode) auto-mode-alist)
-(push '("\\.less\\'" . scss-mode) auto-mode-alist)
-(push '("\\.md\\'" . markdown-mode) auto-mode-alist)
-(push '("\\.y[a]?ml\\'" . yaml-mode) auto-mode-alist)
-(push '("\\.ts[x]?\\'" . typescript-mode) auto-mode-alist)
+  ;; HTML codes for the Source Code Pro glyphs to use as fringe indicators
+  (set-display-table-slot standard-display-table 'truncation 8230)
+  (set-display-table-slot standard-display-table 'wrap 8601)
 
+  ;; transparent background-color for fringe
+  (set-face-attribute 'fringe nil :background nil)
 
-;;; variables and faces
+  ;; hide fringe line-wrap bitmap
+  (assoc-delete-all 'continuation fringe-indicator-alist)
 
-;; highest-priority font first
-(setq my-fonts '("Source Code Pro Light 12"
-                 "Symbola 12"))
-(create-fontset-from-fontset-spec standard-fontset-spec)
-(dolist (font (reverse my-fonts))
-  (set-fontset-font "fontset-standard" 'unicode font nil 'prepend))
+  ;; frame defaults
+  (setq-default default-frame-alist
+                (list
+                 '(undecorated . t)
+                 '(vertical-scroll-bars . nil)
+                 '(internal-border-width . 20)
+                 '(drag-internal-border . t)
+                 '(font . "fontset-standard")))
 
-;; HTML codes for the Source Code Pro glyphs to use as fringe indicators
-(set-display-table-slot standard-display-table 'truncation 8230)
-(set-display-table-slot standard-display-table 'wrap 8601)
-;; transparent background-color for fringe
-(set-face-attribute 'fringe nil :background nil)
-;; hide fringe line-wrap bitmap
-(assoc-delete-all 'continuation fringe-indicator-alist)
-;; frame defaults
-(setq-default default-frame-alist
-              (list
-               '(undecorated . t)
-               '(vertical-scroll-bars . nil)
-               '(internal-border-width . 20)
-               '(drag-internal-border . t)
-               '(font . "fontset-standard")))
-(set-frame-parameter (selected-frame)
-                     'internal-border-width 20)
+  ;; replace the stock Flymake warning/error indicators with a bigger one for hidpi
+  ;; maxmum width is 16px according to emacs docs
+  (define-fringe-bitmap 'flymake-big-indicator
+    (vector #b0000000000000000
+            #b0000000000000000
+            #b0000000000000000
+            #b0111000111000000
+            #b0011100011100000
+            #b0001110001110000
+            #b0000111000111000
+            #b0000011100011100
+            #b0000011100011100
+            #b0000111000111000
+            #b0001110001110000
+            #b0011100011100000
+            #b0111000111000000
+            #b0000000000000000
+            #b0000000000000000
+            #b0000000000000000)
+    16 16 'center))
 
-;; replace the stock Flymake warning/error indicators with a bigger one for hidpi
-;; maxmum width is 16px according to emacs docs
-(define-fringe-bitmap 'flymake-big-indicator
-  (vector #b0000000000000000
-          #b0000000000000000
-          #b0000000000000000
-          #b0111000111000000
-          #b0011100011100000
-          #b0001110001110000
-          #b0000111000111000
-          #b0000011100011100
-          #b0000011100011100
-          #b0000111000111000
-          #b0001110001110000
-          #b0011100011100000
-          #b0111000111000000
-          #b0000000000000000
-          #b0000000000000000
-          #b0000000000000000)
-  16 16 'center)
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
@@ -553,43 +524,51 @@ With argument ARG, do this that many times."
 
 ;;; key commands
 
+(defun init/config-keyboard-shortcuts ()
+  "Config some personal-preference keyboard shortcuts."
 
-;; Ctrl-Backspace -> delete a word instead of killing it
-(global-set-key [C-backspace] 'backward-delete-word)
-;; Ctrl-Delete -> forward-delete a word instead of killing it
-(global-set-key [C-delete] 'delete-word)
-;; Ctrl-Tab -> next window
-(global-set-key [C-tab] 'other-window)
-;; Ctrl-Shift-Tab -> previous window
-(global-set-key [C-S-iso-lefttab]
-                (lambda ()
-                  (interactive)
-                  (other-window -1)))
-;; Ctrl-PgDn -> next window
-(global-set-key [C-next] 'other-window)
-;; Ctrl-PgUp -> previous window
-(global-set-key [C-prior]
-                (lambda ()
-                  (interactive)
-                  (other-window -1)))
-;; Ctrl-a -> select entire buffer
-(global-set-key (kbd "C-a") 'mark-whole-buffer)
-;; use useful Flycheck key bindings in Flymake
-(define-key flymake-mode-map (kbd "C-c ! n") 'flymake-goto-next-error)
-(define-key flymake-mode-map (kbd "C-c ! p") 'flymake-goto-prev-error)
-;; keyboard shortcut to force auto-completion
-(define-key company-mode-map (kbd "M-/") 'company-complete)
-;; keyboard shortcut to find a file in the current project, like VSCode does
-(define-key projectile-mode-map (kbd "C-p") 'projectile-find-file)
-;; I don't use these
-(global-set-key (kbd "C-b") 'noop)
-(global-set-key (kbd "C-f") 'noop)
-(global-set-key (kbd "C-n") 'noop)
-(global-set-key (kbd "C-p") 'noop)
-(global-set-key (kbd "C-x C-f") 'counsel-find-file)
-(global-set-key (kbd "C-x C-k") nil)
-;; Ctrl-w -> close buffer.  CUA-ish
-(global-set-key (kbd "C-w") 'close-buffer)
+  ;; global shortcuts
+
+  ;; Ctrl-Backspace -> delete a word instead of killing it
+  (global-set-key [C-backspace] 'backward-delete-word)
+  ;; Ctrl-Delete -> forward-delete a word instead of killing it
+  (global-set-key [C-delete] 'delete-word)
+  ;; Ctrl-Tab -> next window
+  (global-set-key [C-tab] 'other-window)
+  ;; Ctrl-Shift-Tab -> previous window
+  (global-set-key [C-S-iso-lefttab]
+                  (lambda ()
+                    (interactive)
+                    (other-window -1)))
+  ;; Ctrl-PgDn -> next window
+  (global-set-key [C-next] 'other-window)
+  ;; Ctrl-PgUp -> previous window
+  (global-set-key [C-prior]
+                  (lambda ()
+                    (interactive)
+                    (other-window -1)))
+  ;; Ctrl-a -> select entire buffer
+  (global-set-key (kbd "C-a") 'mark-whole-buffer)
+  ;; I don't use these and their minibuffer messages annoy me
+  (global-set-key (kbd "C-b") 'noop)
+  (global-set-key (kbd "C-f") 'noop)
+  (global-set-key (kbd "C-n") 'noop)
+  (global-set-key (kbd "C-p") 'noop)
+  (global-set-key (kbd "C-x C-k") 'noop)
+  ;; use a richer file-finder
+  (global-set-key (kbd "C-x C-f") 'counsel-find-file)
+  ;; Ctrl-w -> close buffer.  CUA-ish
+  (global-set-key (kbd "C-w") 'close-buffer)
+
+  ;; mode-specific shortcuts
+
+  ;; use useful Flycheck key bindings in Flymake (when flymake-mode is enabled)
+  (define-key flymake-mode-map (kbd "C-c ! n") 'flymake-goto-next-error)
+  (define-key flymake-mode-map (kbd "C-c ! p") 'flymake-goto-prev-error)
+  ;; keyboard shortcut to force auto-completion (when company-mode is enabled)
+  (define-key company-mode-map (kbd "M-/") 'company-complete)
+  ;; keyboard shortcut to find a file in the current project, like VSCode does (when projectile-mode is enabled
+  (define-key projectile-mode-map (kbd "C-p") 'projectile-find-file))
 
 
 ;;; post-init
@@ -597,6 +576,10 @@ With argument ARG, do this that many times."
 
 (add-hook 'after-init-hook
           (lambda ()
+            (init/config-packages)
+            (init/config-fonts)
+            (init/config-file-associations)
+            (init/config-keyboard-shortcuts)
 	    (all-the-icons-ivy-setup)
             (auto-compression-mode -1)
             (auto-encryption-mode -1)
