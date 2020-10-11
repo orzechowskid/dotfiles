@@ -16,7 +16,7 @@
 With argument ARG, do this that many times."
 
   (interactive "p")
-  (delete-word (- arg)))
+  (my/delete-word (- arg)))
 
 
 (defun my/close-buffer ()
@@ -43,6 +43,12 @@ With argument ARG, do this that many times."
         (call-process "eslint_d" nil "*ESLint Errors*" nil "--fix" buffer-file-name)
         (revert-buffer t t t))
     (message "eslint_d not found")))
+
+
+(defun my/find-file-regex (pattern)
+  "Better matching for `counsel-find-file'.  Only search for PATTERN at the start of file basenames."
+
+  (concat "^" pattern))
 
 
 (defun my/ignore-file-p (name path)
@@ -268,7 +274,7 @@ With argument ARG, do this that many times."
   (add-hook 'lisp-mode-hook 'my/common-lisp-mode-hook)
   (add-hook 'term-mode-hook 'my/terminal-mode-hook)
   (add-hook 'flymake-mode-hook 'my/flymake-mode-hook)
-  (add-hook 'typescript-mode-hook 'my/ts-mode-hook)
+;  (add-hook 'typescript-mode-hook 'my/ts-mode-hook)
   (add-hook 'minibuffer-setup-hook 'my/minibuf-entrance-hook)
   (add-hook 'minibuffer-exit-hook 'my/minibuf-exit-hook))
 
@@ -423,6 +429,8 @@ With argument ARG, do this that many times."
   ;; code completion
   (require 'company)
   (require 'company-quickhelp)
+  ;; a better file-finder
+  (require 'counsel)
   ;; mode line cleaner-upper
   (require 'delight)
   ;; support nvm doing weird things to our shell $PATH but not our login session $PATH
@@ -468,6 +476,8 @@ With argument ARG, do this that many times."
 (defun init/config-whatever-else ()
   "Kind of a dumping ground tbh."
 
+  ;; use a sane regex for filename matching
+  (push '(counsel-find-file . my/find-file-regex) ivy-re-builders-alist)
   ;; prefer contents of help-at-point (e.g., Flymake) over whatever eldoc outputs
   (advice-add 'eldoc-message :around
               (lambda (oldfn doc-msg)
@@ -496,6 +506,7 @@ With argument ARG, do this that many times."
  '(company-tooltip-align-annotations t)
  '(coverlay:mark-tested-lines nil)
  '(coverlay:untested-line-background-color "#ffe8e8")
+ '(css-indent-offset 2)
  '(cua-mode t nil (cua-base))
  '(debug-on-error t)
  '(exec-path-from-shell-check-startup-files nil)
@@ -541,7 +552,7 @@ With argument ARG, do this that many times."
  '(lsp-enable-snippet nil)
  '(lsp-modeline-code-actions-enable nil)
  '(menu-bar-mode nil)
- '(mmm-submode-decoration-level 0)
+ '(mmm-submode-decoration-level 2)
  '(mode-line-format
    '((:eval
       (my/status-line-render
