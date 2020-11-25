@@ -426,6 +426,8 @@ With argument ARG, do this that many times."
   ;; these things are used by multiple major modes and/or get configured before any
   ;; buffers are opened, so they're not good candidates for autoload
 
+  ;; add icons to counsel
+  (require 'all-the-icons-ivy)
   ;; code completion
   (require 'company)
   (require 'company-quickhelp)
@@ -568,6 +570,7 @@ With argument ARG, do this that many times."
          "")))))
  '(package-selected-packages
    '(all-the-icons-ivy-rich all-the-icons-ivy counsel all-the-icons company-prescient mmm-mode typescript-mode auto-dim-other-buffers lsp-mode swiper flymake-json editorconfig dotenv-mode web-mode js-doc projectile treemacs-projectile treemacs exec-path-from-shell 2048-game dockerfile-mode request flymake-stylelint company scss-mode markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
+ '(projectile-completion-system 'ivy)
  '(read-process-output-max (* 1024 1024) t)
  '(scroll-bar-mode nil)
  '(sgml-basic-offset 2)
