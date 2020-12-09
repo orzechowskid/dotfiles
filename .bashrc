@@ -9,3 +9,4 @@
 
 alias please='sudo "$BASH" -c "$(history -p !!)"'
 alias nodemodules='find . -name "node_modules" | xargs rm -rf'
+alias scripts='cat package.json | jq .scripts'

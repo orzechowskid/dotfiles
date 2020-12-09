@@ -148,10 +148,6 @@ With argument ARG, do this that many times."
               (locate-dominating-file buffer-file-name "coverage")
               "coverage/lcov.info"))))))
 
-  ;; enable multiple major modes (for css-in-js etc)
-;  (mmm-mode t)
-;  (mmm-add-mode-ext-class 'js-mode nil 'mmm-styled-mode)
-
   ;; I want the key command in the xref map instead of this one
   (define-key js-mode-map (kbd "M-.") nil))
 
@@ -219,12 +215,15 @@ With argument ARG, do this that many times."
   (projectile-mode)
 
   ;; code analysis via a language server
-;  (lsp)
-;  (lsp-completion-mode t)
+  (lsp)
+  (lsp-completion-mode t)
 
   ;; add an eslint backend to flymake
 ;;  (flymake-eslint-enable)
-;;  (setq flymake-eslint-project-root (locate-dominating-file buffer-file-name ".eslintrc.js"))
+  ;;  (setq flymake-eslint-project-root (locate-dominating-file buffer-file-name ".eslintrc.js"))
+
+  ;; styled-components
+  (css-in-js-mode t)
 
   ;; code-completion
   (company-mode t)
@@ -274,7 +273,7 @@ With argument ARG, do this that many times."
   (add-hook 'lisp-mode-hook 'my/common-lisp-mode-hook)
   (add-hook 'term-mode-hook 'my/terminal-mode-hook)
   (add-hook 'flymake-mode-hook 'my/flymake-mode-hook)
-;  (add-hook 'typescript-mode-hook 'my/ts-mode-hook)
+  (add-hook 'typescript-mode-hook 'my/ts-mode-hook)
   (add-hook 'minibuffer-setup-hook 'my/minibuf-entrance-hook)
   (add-hook 'minibuffer-exit-hook 'my/minibuf-exit-hook))
 
@@ -366,6 +365,8 @@ With argument ARG, do this that many times."
   (global-set-key (kbd "C-x C-f") 'counsel-find-file)
   ;; Ctrl-w -> close buffer.  CUA-ish
   (global-set-key (kbd "C-w") 'my/close-buffer)
+  ;; extended-command autocomplete
+  (global-set-key (kbd "M-x") 'counsel-M-x)
 
   ;; mode-specific shortcuts
 
@@ -374,7 +375,7 @@ With argument ARG, do this that many times."
   (define-key flymake-mode-map (kbd "C-c ! p") 'flymake-goto-prev-error)
   ;; keyboard shortcut to force auto-completion (when company-mode is enabled)
   (define-key company-mode-map (kbd "M-/") 'company-complete)
-  ;; keyboard shortcut to find a file in the current project, like VSCode does (when projectile-mode is enabled
+  ;; keyboard shortcut to find a file in the current project, like VSCode does (when projectile-mode is enabled)
   (define-key projectile-mode-map (kbd "C-p") 'projectile-find-file))
 
 
@@ -455,6 +456,9 @@ With argument ARG, do this that many times."
   (autoload 'coverlay-minor-mode "coverlay"
     "Use the coverlay package to provide 'coverlay-minor-mode on-demand."
     t)
+  (autoload 'css-in-js-mode "css-in-js"
+    "Use the css-in-js package to provide 'css-in-js-mode on-demand."
+    t)
   (autoload 'flymake-eslint-enable "flymake-eslint"
     "Use the flymake-eslint package to provide 'flymake-eslint-enable on-demand."
     t)
@@ -501,7 +505,7 @@ With argument ARG, do this that many times."
  '(company-backends '(company-files company-capf company-semantic))
  '(company-files-exclusions '("~" "*#"))
  '(company-minimum-prefix-length 1)
- '(company-quickhelp-color-background nil)
+ '(company-quickhelp-color-background "white smoke")
  '(company-quickhelp-color-foreground nil)
  '(company-quickhelp-delay 1.0)
  '(company-tooltip-align-annotations t)
@@ -574,8 +578,6 @@ With argument ARG, do this that many times."
  '(scroll-bar-mode nil)
  '(sgml-basic-offset 2)
  '(tool-bar-mode nil)
- '(treemacs-is-never-other-window t)
- '(treemacs-space-between-root-nodes nil)
  '(typescript-enabled-frameworks '(typescript mochikit exttypescript))
  '(typescript-indent-level 2)
  '(uniquify-buffer-name-style 'forward nil (uniquify))
@@ -589,11 +591,14 @@ With argument ARG, do this that many times."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(company-preview ((t (:inherit company-tooltip-selection))))
+ '(company-preview-common ((t nil)))
+ '(company-preview-search ((t nil)))
  '(company-scrollbar-bg ((t (:background "gray95"))))
  '(company-scrollbar-fg ((t (:background "#808080"))))
- '(company-tooltip-annotation ((t (:foreground "firebrick4"))))
- '(company-tooltip-common ((t (:foreground "black"))))
- '(company-tooltip-selection ((t (:background "steel blue" :foreground "white"))))
+ '(company-tooltip ((t (:background "white smoke" :foreground "black"))))
+ '(company-tooltip-annotation ((t (:foreground "gray45"))))
+ '(company-tooltip-common ((t (:foreground "gray14" :weight normal))))
+ '(company-tooltip-selection ((t (:inherit highlight))))
  '(flymake-warning ((t (:underline (:color "dark orange" :style wave)))))
  '(font-lock-comment-face ((t (:inherit default :foreground "Firebrick"))))
  '(font-lock-doc-face ((t (:inherit font-lock-comment-face))))
@@ -606,12 +611,7 @@ With argument ARG, do this that many times."
  '(region ((t (:extend t :background "gray90" :distant-foreground "gtk_selection_fg_color"))))
  '(term ((t (:background "black" :foreground "white"))))
  '(term-bold ((t (:background "black" :foreground "white" :weight bold))))
- '(term-color-blue ((t (:background "DeepSkyBlue4" :foreground "DeepSkyBlue4"))))
- '(treemacs-directory-face ((t (:inherit font-lock-function-name-face :weight normal))))
- '(treemacs-git-ignored-face ((t (:inherit font-lock-comment-face))))
- '(treemacs-git-modified-face ((t (:inherit font-lock-variable-name-face :weight bold))))
- '(treemacs-git-untracked-face ((t (:inherit default :foreground "forest green" :weight bold))))
- '(treemacs-root-face ((t (:inherit font-lock-constant-face :underline t :weight bold)))))
+ '(term-color-blue ((t (:background "DeepSkyBlue4" :foreground "DeepSkyBlue4")))))
 
 
 ;;; let's go!

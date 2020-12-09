@@ -1,7 +1,8 @@
+! 1920x1080x15.6in : 141dpi
 ! 1920x1080x13.3in : 166dpi
 ! 2560x1440x13.3in : 221ppi
 ! 3200x1800x13.3in : 276dpi
-Xft.dpi: 166
+Xft.dpi: 141
 
 ! URxvt
 ! normal colors
@@ -25,6 +26,7 @@ Xft.dpi: 166
 
 URxvt*background: rgba:0000/0000/0000/d800
 URxvt*buffered: true
+URxvt*color1: #ff4040
 URxvt*color4: #6495ed
 URxvt.color10: #32a032
 URxvt*color12: #6495ed
@@ -38,5 +40,3 @@ URxvt*saveLines:655350
 URxvt*scrollBar: false
 URxvt*scrollWithTtyOutput: false
 URxvt*skipScroll: true
-
-Xcursor.size: 48
