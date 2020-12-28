@@ -1,314 +1,69 @@
-;;; .emacs --- Summary:
+;;; init.el --- personal config file -*- lexical-binding: t; -*-
+;;; Summary:
 ;;; Commentary:
 ;;; Code:
 
 
 (prefer-coding-system 'utf-8)
 (set-language-environment "UTF-8")
-(require 'package)
-
-
-;;; mode hooks, utility functions, and advices
-
-
-(defun my/backward-delete-word (arg)
-  "Delete characters backward until encountering the beginning of a word.
-With argument ARG, do this that many times."
-
-  (interactive "p")
-  (my/delete-word (- arg)))
-
-
-(defun my/close-buffer ()
-  "Closes current buffer without prompting."
-
-  (interactive)
-  (kill-buffer (current-buffer)))
-
-
-(defun my/delete-word (arg)
-  "Delete characters forward until encountering the end of a word.
-With argument ARG, do this that many times."
-
-  (interactive "p")
-  (delete-region (point) (progn (forward-word arg) (point))))
-
-
-(defun my/eslint-fix-buffer ()
-  "Run `eslint --fix' on current buffer."
-
-  (interactive)
-  (if (executable-find "eslint_d")
-      (progn
-        (call-process "eslint_d" nil "*ESLint Errors*" nil "--fix" buffer-file-name)
-        (revert-buffer t t t))
-    (message "eslint_d not found")))
-
-
-(defun my/find-file-regex (pattern)
-  "Better matching for `counsel-find-file'.  Only search for PATTERN at the start of file basenames."
-
-  (concat "^" pattern))
-
-
-(defun my/ignore-file-p (name path)
-  "Tell projectile to ignore some stuff based on the NAME and PATH of a file in the project."
-
-  (or (string= name "node_modules")
-      (string= name ".git")
-      (string= name ".circleci")
-      (string= name "coverage")))
-
-
-(defun my/noop ()
-  "Does nothing."
-
-  (interactive))
-
-
-(defun my/status-line-render (left-content right-content)
-  "Render LEFT-CONTENT and RIGHT-CONTENT, appropriately justified."
-
-  (let* ((left-str (format-mode-line left-content))
-         (right-str (format-mode-line right-content))
-         (available-width
-          (- (window-total-width)
-             (length left-str)
-             (length right-str)
-             2))) ; left and right padding
-    (format " %s%s%s "
-            (propertize left-str 'face nil)
-            (format (format "%%%ds" available-width) "")
-            (propertize right-str 'face nil))))
-
-
-(defun my/term-send-cx ()
-  "Sends Ctrl-x to a term buffer.  Useful if you accidentally open nano."
-  (interactive)
-  (term-send-raw-string ""))
-
-
-(defun my/css-mode-hook ()
-  "Do some things when opening [S]CSS files."
-  (company-mode t)
-  (eldoc-mode t)
-  (flymake-stylelint-enable)
-  (subword-mode t))
-
-
-(defun my/flymake-mode-hook ()
-  "Do some things when enabling Flymake."
-  (help-at-pt-set-timer)
-  (setq-local help-at-pt-display-when-idle t))
-
-
-(defun my/javascript-mode-hook ()
-  "Do some things when opening JavaScript files."
-;;  ;; run `eslint --fix' upon save
-;;  (add-hook 'after-save-hook 'my/eslint-fix-buffer t t)
-
-  ;; assume JSX even if you don't see an import/require of React
-  (js-jsx-enable)
-
-  ;; treat this file as part of a larger project (when applicable)
-  (projectile-mode)
-
-  ;; code analysis via a language server
-  (lsp)
-
-  ;; add an eslint backend to flymake
-  (flymake-eslint-enable)
-  (if (buffer-file-name)
-      (setq flymake-eslint-project-root (locate-dominating-file buffer-file-name ".eslintrc.js")))
-
-  ;; code-completion
-  (company-mode t)
-  (company-quickhelp-mode t)
-  (lsp-completion-mode t)
-
-  ;; camelCase-aware navigation
-  (subword-mode t)
-
-  ;; turn on coverage mode if not a test file
-  (if (buffer-file-name)
-      (unless (string-match-p "test.js[x]?\\'" (buffer-file-name))
-        (when-let
-            ((coverage-dir
-              (locate-dominating-file
-               (buffer-file-name)
-               "coverage")))
-          (coverlay-minor-mode t)
-          (setq coverlay:base-path
-                (expand-file-name coverage-dir "coverage"))
-          (unless
-              (bound-and-true-p coverlay--loaded-filepath)
-            ;; load the closest coverage file if one hasn't been loaded yet
-            (coverlay-watch-file
-             (concat
-              (locate-dominating-file buffer-file-name "coverage")
-              "coverage/lcov.info"))))))
-
-  ;; I want the key command in the xref map instead of this one
-  (define-key js-mode-map (kbd "M-.") nil))
-
-
-(defun my/json-mode-hook ()
-  "Do some things when opening JSON files."
-
-  (make-local-variable 'js-indent-level)
-
-  (lsp-mode -1)
-  (lsp-completion-mode -1)
-
-  ;; enable camelCase-aware navigation
-  (subword-mode t))
-
-
-(defun my/js-json-mode-hook ()
-  "Emacs' json major mode descends from its js major mode, so the hook situation is all messed up without something like this."
-  (if (string-match-p "json\\'" (or (buffer-file-name) ""))
-      (my/json-mode-hook)
-    (my/javascript-mode-hook)))
-
-
-(defun my/common-lisp-mode-hook ()
-  "Do some things when entering a Lisp mode."
-
-  ;; enable code-completion mode
-  (company-mode t)
-  (company-quickhelp-mode t)
-
-  ;; enable documentation in echo area
-  (eldoc-mode t)
-
-  ;; linter (most of the time)
-  (when (not (string= (buffer-name) "*scratch*"))
-    (flymake-mode t)))
-
-
-(defun my/terminal-mode-hook ()
-  "Do some things when opening a terminal."
-
-  ;; for terminals only, we want the default face to be reversed
-  (face-remap-add-relative 'default '((:background "black") (:foreground "white")))
-
-  ;; our terminal doesn't need a mode- or header-line
-  (setq mode-line-format nil)
-  (setq header-line-format nil) ; why doesn't this work?
-
-  ;; it doesn't need fringes either
-  ;; ...but all of the fringe-set functions either don't work or apply to the whole frame :(
-  (face-remap-add-relative 'fringe '((:background "black")))
-
-  ;; we don't need line/column numbers in our header line either
-  (setq-local header-line-format
-              '((:eval
-                 (my/status-line-render
-                  (format "%%b")
-                  (format " "))))))
-
-
-(defun my/ts-mode-hook ()
-  "Do some things when editing a Typescript file."
-
-  ;; treat this file as part of a larger project (when applicable)
-  (projectile-mode)
-
-  ;; code analysis via a language server
-  (lsp)
-  (lsp-completion-mode t)
-
-  ;; add an eslint backend to flymake
-;;  (flymake-eslint-enable)
-  ;;  (setq flymake-eslint-project-root (locate-dominating-file buffer-file-name ".eslintrc.js"))
-
-  ;; styled-components
-  (css-in-js-mode t)
-
-  ;; code-completion
-  (company-mode t)
-  (company-quickhelp-mode t)
-
-  ;; camelCase-aware navigation
-  (subword-mode t))
-
-
-(defun my/minibuf-entrance-hook ()
-  "Do some things when activating the minibuffer."
-
-  ;; stolen from Doom
-  (setq gc-cons-threshold most-positive-fixnum))
-
-
-(defun my/minibuf-exit-hook ()
-  "Do some things when leaving the minibuffer."
-
-  ;; stolen from Doom
-  (run-at-time
-   1
-   nil
-   (lambda ()
-     (setq gc-cons-threshold 16777216))))
-
-
-;;; initialization functions
-
-
-(defun init/config-file-associations ()
-  "Configure what happens when a certain file type is opened."
-
-  (push '("\\.js[x]?\\'" . js-mode) auto-mode-alist)
-  (push '("\\.json\\'" . json-mode) auto-mode-alist)
-  (push '("\\.[s]?css\\'" . scss-mode) auto-mode-alist)
-  (push '("\\.less\\'" . scss-mode) auto-mode-alist)
-  (push '("\\.md\\'" . markdown-mode) auto-mode-alist)
-  (push '("\\.y[a]?ml\\'" . yaml-mode) auto-mode-alist)
-  (push '("\\.ts[x]?\\'" . typescript-mode) auto-mode-alist)
-
-  ;; run custom functions when some major modes are entered
-  (add-hook 'scss-mode-hook 'my/css-mode-hook)
-  (add-hook 'emacs-lisp-mode-hook 'my/common-lisp-mode-hook)
-  (add-hook 'js-mode-hook 'my/js-json-mode-hook)
-  (add-hook 'json-mode-hook 'my/js-json-mode-hook)
-  (add-hook 'lisp-mode-hook 'my/common-lisp-mode-hook)
-  (add-hook 'term-mode-hook 'my/terminal-mode-hook)
-  (add-hook 'flymake-mode-hook 'my/flymake-mode-hook)
-  (add-hook 'typescript-mode-hook 'my/ts-mode-hook)
-  (add-hook 'minibuffer-setup-hook 'my/minibuf-entrance-hook)
-  (add-hook 'minibuffer-exit-hook 'my/minibuf-exit-hook))
-
-
-(defun init/config-fonts ()
-  "Configure font, face, and frame preferences."
-
-  ;; set default and fallback fonts
-  ;; highest-priority font first
-  (let ((my-fonts '("Source Code Pro Light 12"
-                    "Symbola 12")))
-    (create-fontset-from-fontset-spec standard-fontset-spec)
-    (dolist (font (reverse my-fonts))
-      (set-fontset-font "fontset-standard" 'unicode font nil 'prepend)))
-
-  ;; HTML codes for the Source Code Pro glyphs to use as fringe indicators
-  (set-display-table-slot standard-display-table 'truncation 8230)
-  (set-display-table-slot standard-display-table 'wrap 8601)
-
-  ;; transparent background-color for fringe
-  (set-face-attribute 'fringe nil :background nil)
-
-  ;; hide fringe line-wrap bitmap
-  (assoc-delete-all 'continuation fringe-indicator-alist)
-
-  ;; frame defaults
-  (setq-default default-frame-alist
-                (list
-                 '(undecorated . t)
-                 '(vertical-scroll-bars . nil)
-                 '(internal-border-width . 20)
-                 '(drag-internal-border . t)
-                 '(font . "fontset-standard")))
-
-  ;; replace the stock Flymake warning/error indicators with a bigger one for hidpi
+(setq gc-cons-threshold most-positive-fixnum)
+
+(defvar my-gc-cons-threshold (* 1024 1024 20))
+
+(defvar bootstrap-version)
+(let ((bootstrap-file
+       (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
+      (bootstrap-version 5))
+  (unless (file-exists-p bootstrap-file)
+    (with-current-buffer
+        (url-retrieve-synchronously
+         "https://raw.githubusercontent.com/raxod502/straight.el/develop/install.el"
+         'silent 'inhibit-cookies)
+      (goto-char (point-max))
+      (eval-print-last-sexp)))
+  (load bootstrap-file nil 'nomessage))
+
+(straight-use-package
+ '(bbjson-mode :type git :host github :repo "orzechowskid/bbjson-mode.el"))
+(straight-use-package 'company)
+(straight-use-package 'company-web)
+(straight-use-package 'counsel)
+(straight-use-package 'dap-mode)
+(straight-use-package 'delight)
+(straight-use-package 'dockerfile-mode)
+(straight-use-package 'eldoc)
+(straight-use-package 'exec-path-from-shell)
+(straight-use-package 'flymake-eslint)
+(straight-use-package
+ '(flymake-stylelint :type git :host github :repo "orzechowskid/flymake-stylelint"))
+(straight-use-package 'lsp-mode)
+(straight-use-package 'markdown-mode)
+(straight-use-package 'projectile)
+(straight-use-package 'scss-mode)
+(straight-use-package 'typescript-mode)
+(straight-use-package 'vs-light-theme)
+(straight-use-package 'yaml-mode)
+
+(with-eval-after-load 'css-mode
+  ;; until someone (*cough*) files a PR against css-mode
+  (push "sticky" (alist-get "position" css-property-alist nil nil #'equal)))
+
+(with-eval-after-load 'projectile
+  ;; Ctrl-p -> find file in project
+  (define-key projectile-mode-map (kbd "C-p") 'projectile-find-file))
+
+(with-eval-after-load 'counsel
+  (push '(counsel-find-file . my/find-file-regex) ivy-re-builders-alist))
+
+(with-eval-after-load 'lsp-mode
+  (require 'dap-chrome))
+
+(with-eval-after-load 'company
+  (define-key company-mode-map (kbd "M-/") 'company-complete))
+
+(with-eval-after-load 'flymake
+  (define-key flymake-mode-map (kbd "C-c ! n") 'flymake-goto-next-error)
+  (define-key flymake-mode-map (kbd "C-c ! p") 'flymake-goto-prev-error)
   ;; maxmum width is 16px according to emacs docs
   (define-fringe-bitmap 'flymake-big-indicator
     (vector #b0000000000000000
@@ -329,262 +84,37 @@ With argument ARG, do this that many times."
             #b0000000000000000)
     16 16 'center))
 
-
-(defun init/config-keyboard-shortcuts ()
-  "Config some personal-preference keyboard shortcuts."
-
-  ;; global shortcuts
-
-  ;; Ctrl-Backspace -> delete a word instead of killing it
-  (global-set-key [C-backspace] 'my/backward-delete-word)
-  ;; Ctrl-Delete -> forward-delete a word instead of killing it
-  (global-set-key [C-delete] 'my/delete-word)
-  ;; Ctrl-Tab -> next window
-  (global-set-key [C-tab] 'other-window)
-  ;; Ctrl-Shift-Tab -> previous window
-  (global-set-key [C-S-iso-lefttab]
-                  (lambda ()
-                    (interactive)
-                    (other-window -1)))
-  ;; Ctrl-PgDn -> next window
-  (global-set-key [C-next] 'other-window)
-  ;; Ctrl-PgUp -> previous window
-  (global-set-key [C-prior]
-                  (lambda ()
-                    (interactive)
-                    (other-window -1)))
-  ;; Ctrl-a -> select entire buffer
-  (global-set-key (kbd "C-a") 'mark-whole-buffer)
-  ;; I don't use these and their minibuffer messages annoy me
-  (global-set-key (kbd "C-b") 'my/noop)
-  (global-set-key (kbd "C-f") 'my/noop)
-  (global-set-key (kbd "C-n") 'my/noop)
-  (global-set-key (kbd "C-p") 'my/noop)
-  (global-set-key (kbd "C-x C-k") 'my/noop)
-  ;; use a richer file-finder
-  (global-set-key (kbd "C-x C-f") 'counsel-find-file)
-  ;; Ctrl-w -> close buffer.  CUA-ish
-  (global-set-key (kbd "C-w") 'my/close-buffer)
-  ;; extended-command autocomplete
-  (global-set-key (kbd "M-x") 'counsel-M-x)
-
-  ;; mode-specific shortcuts
-
-  ;; use useful Flycheck key bindings in Flymake (when flymake-mode is enabled)
-  (define-key flymake-mode-map (kbd "C-c ! n") 'flymake-goto-next-error)
-  (define-key flymake-mode-map (kbd "C-c ! p") 'flymake-goto-prev-error)
-  ;; keyboard shortcut to force auto-completion (when company-mode is enabled)
-  (define-key company-mode-map (kbd "M-/") 'company-complete)
-  ;; keyboard shortcut to find a file in the current project, like VSCode does (when projectile-mode is enabled)
-  (define-key projectile-mode-map (kbd "C-p") 'projectile-find-file))
-
-
-(defun init/config-modeline ()
-  "Config some mode- and header-line stuff."
-
-  ;; shorten some major-mode modeline strings
-  (delight '((emacs-lisp-mode "ELisp")))
-
-  ;; remove some minor-mode modeline strings
-  (delight
-   '((subword-mode nil "subword")
-     (company-mode nil "company")
-     (lsp-mode nil "lsp")
-     (mmm-mode nil nil)
-     (projectile-mode nil t)
-     (coverlay-minor-mode nil "coverlay")
-     (eldoc-mode nil "eldoc")))
-
-  ;; shorten dynamically-generated Flymake minor-mode string
-  (advice-add
-   'flymake--mode-line-format :filter-return
-   (lambda (&rest return-value)
-     (setf
-      (seq-elt
-       (car return-value)
-       0)
-      " ✓")
-     return-value))
-
-  (advice-add
-   'yank
-   :after
-   (lambda (&rest unused)
-     (indent-region (region-beginning) (region-end) nil))))
-
-
-(defun init/config-packages ()
-  "Configure the loading of external packages."
-
-  (package-initialize)
-
-  ;; enable package-loading from MELPA
-  (push '("melpa" . "https://melpa.org/packages/") package-archives)
-
-  ;; enable package-loading from a local directory
-  (push "~/.emacs.d/elisp" load-path)
-
-  ;; these things are used by multiple major modes and/or get configured before any
-  ;; buffers are opened, so they're not good candidates for autoload
-
-  ;; add icons to counsel
-  (require 'all-the-icons-ivy)
-  ;; code completion
-  (require 'company)
-  (require 'company-quickhelp)
-  ;; a better file-finder
-  (require 'counsel)
-  ;; mode line cleaner-upper
-  (require 'delight)
-  ;; support nvm doing weird things to our shell $PATH but not our login session $PATH
-  (require 'exec-path-from-shell)
-  ;; linting
-  (require 'flymake)
-  (require 'flymake-stylelint) ;; eyyyy don't forget this is not on MELPA yet and needs to be installed manually
-  ;; code analysis
-  (require 'lsp-mode)
-  (require 'lsp-javascript)
-  ;; multiple modes in the same buffer
-  (require 'mmm-mode)
-  ;; project-centric editing
-  (require 'projectile)
-  ;; change how files with the same basename are differentiated
-  (require 'uniquify)
-
-  ;; these guys, however...
-
-  (autoload 'coverlay-minor-mode "coverlay"
-    "Use the coverlay package to provide 'coverlay-minor-mode on-demand."
-    t)
-  (autoload 'css-in-js-mode "css-in-js"
-    "Use the css-in-js package to provide 'css-in-js-mode on-demand."
-    t)
-  (autoload 'flymake-eslint-enable "flymake-eslint"
-    "Use the flymake-eslint package to provide 'flymake-eslint-enable on-demand."
-    t)
-  (autoload 'flymake-stylelint-enable "flymake-stylelint"
-    "Use the flymake-stylelint package to provide 'flymake-stylelint-enable on-demand."
-    t)
-  (autoload 'json-mode "json-mode"
-    "Use the json-mode package to provide 'json-mode on-demand."
-    t)
-  (autoload 'markdown-mode "markdown-mode"
-    "Use the markdown-mode package to provide 'markdown-mode on-demand."
-    t)
-  (autoload 'scss-mode "scss-mode"
-    "Use the scss-mode package to provide 'scss-mode on-demand."
-    t)
-  (autoload 'yaml-mode "yaml-mode"
-    "Use the yaml-mode package to provide 'yaml-mode on-demand."
-    t))
-
-
-(defun init/config-whatever-else ()
-  "Kind of a dumping ground tbh."
-
-  ;; use a sane regex for filename matching
-  (push '(counsel-find-file . my/find-file-regex) ivy-re-builders-alist)
-  ;; prefer contents of help-at-point (e.g., Flymake) over whatever eldoc outputs
-  (advice-add 'eldoc-message :around
-              (lambda (oldfn doc-msg)
-                (let ((echo-help-string (help-at-pt-string)))
-                  (if echo-help-string
-                      (display-local-help)
-                    (funcall oldfn doc-msg))))))
-
-
-;;; variables and faces set via Customize
-
-
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(backup-by-copying t)
- '(company-backends '(company-files company-capf company-semantic))
- '(company-files-exclusions '("~" "*#"))
- '(company-minimum-prefix-length 1)
- '(company-quickhelp-color-background "white smoke")
- '(company-quickhelp-color-foreground nil)
- '(company-quickhelp-delay 1.0)
- '(company-tooltip-align-annotations t)
- '(coverlay:mark-tested-lines nil)
- '(coverlay:untested-line-background-color "#ffe8e8")
+ '(c-basic-offset 2)
+ '(company-backends
+   '(company-semantic company-capf company-files company-web-html))
+ '(company-idle-delay 0.0)
+ '(counsel-find-file-ignore-regexp "\\(?:\\`\\|[/\\]\\)\\(?:[#.]\\)")
  '(css-indent-offset 2)
- '(cua-mode t nil (cua-base))
- '(debug-on-error t)
- '(exec-path-from-shell-check-startup-files nil)
+ '(debug-on-error nil)
  '(flymake-error-bitmap '(flymake-big-indicator compilation-error))
- '(flymake-eslint-executable-args "\"-f unix\"")
- '(flymake-eslint-executable-name "eslint")
- '(flymake-jslint-args '("--no-color" "--no-ignore" "--stdin"))
- '(flymake-jslint-command "eslint")
- '(flymake-no-changes-timeout 0.5)
- '(flymake-note-bitmap '(flymake-big-indicator compilation-info))
  '(flymake-stylelint-executable-args "-q")
- '(flymake-stylelint-executable-name "stylelint")
  '(flymake-warning-bitmap '(flymake-big-indicator compilation-warning))
- '(font-use-system-font nil)
- '(frame-title-format '("%f") t)
- '(fringe-mode '(24 . 8) nil (fringe))
- '(gc-cons-percentage 0.1)
- '(gc-cons-threshold 16777216)
- '(header-line-format
-   '((:eval
-      (my/status-line-render
-       (format "%s %%b"
-               (if
-                   (and
-                    (buffer-file-name)
-                    (buffer-modified-p))
-                   "*" " "))
-       (format "%s"
-               (format-mode-line "%l:%c"))))) t)
- '(help-at-pt-display-when-idle '(flymake-diagnostic) nil (help-at-pt))
- '(help-at-pt-timer-delay 0.25)
+ '(fringe-mode '(24 . 0) nil (fringe))
  '(indent-tabs-mode nil)
+ '(inhibit-startup-echo-area-message "dan")
  '(inhibit-startup-screen t)
+ '(initial-scratch-message nil)
  '(ivy-magic-tilde nil)
- '(js-chain-indent nil)
  '(js-enabled-frameworks nil)
  '(js-indent-level 2)
- '(js-jsx-attribute-offset 2)
  '(js-switch-indent-offset 2)
- '(lsp-auto-configure t)
- '(lsp-diagnostics-provider :flymake)
- '(lsp-enable-folding nil)
- '(lsp-enable-snippet nil)
- '(lsp-modeline-code-actions-enable nil)
+ '(lsp-diagnostics-provider t)
+ '(lsp-headerline-breadcrumb-enable nil)
  '(menu-bar-mode nil)
- '(mmm-submode-decoration-level 2)
- '(mode-line-format
-   '((:eval
-      (my/status-line-render
-       (format-mode-line
-        (list " " mode-name minor-mode-alist))
-       (if
-           (stringp vc-mode)
-           (format "%s"
-                   (format "%s%s"
-                           (char-to-string 57504)
-                           (format-mode-line
-                            '(vc-mode vc-mode))))
-         "")))))
- '(package-selected-packages
-   '(all-the-icons-ivy-rich all-the-icons-ivy counsel all-the-icons company-prescient mmm-mode typescript-mode auto-dim-other-buffers lsp-mode swiper flymake-json editorconfig dotenv-mode web-mode js-doc projectile treemacs-projectile treemacs exec-path-from-shell 2048-game dockerfile-mode request flymake-stylelint company scss-mode markdown-mode json-mode flymake-eslint delight coverlay company-quickhelp))
  '(projectile-completion-system 'ivy)
- '(read-process-output-max (* 1024 1024) t)
- '(scroll-bar-mode nil)
- '(sgml-basic-offset 2)
- '(tool-bar-mode nil)
- '(typescript-enabled-frameworks '(typescript mochikit exttypescript))
- '(typescript-indent-level 2)
- '(uniquify-buffer-name-style 'forward nil (uniquify))
- '(widget-image-enable nil)
- '(yas-expand-snippet noop))
-
-
+ '(smie-config nil)
+ '(straight-check-for-modifications '(check-on-save find-when-checking))
+ '(tool-bar-mode nil))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -599,45 +129,247 @@ With argument ARG, do this that many times."
  '(company-tooltip-annotation ((t (:foreground "gray45"))))
  '(company-tooltip-common ((t (:foreground "gray14" :weight normal))))
  '(company-tooltip-selection ((t (:inherit highlight))))
+ '(dap-ui-breakpoint-verified-fringe ((t (:background "black" :weight bold))))
+ '(dap-ui-pending-breakpoint-face ((t (:background "pale goldenrod"))))
  '(flymake-warning ((t (:underline (:color "dark orange" :style wave)))))
- '(font-lock-comment-face ((t (:inherit default :foreground "Firebrick"))))
- '(font-lock-doc-face ((t (:inherit font-lock-comment-face))))
- '(font-lock-function-name-face ((t (:foreground "steel blue" :weight bold))))
- '(header-line ((t (:inherit default :background "gray95" :foreground "gray33" :weight bold))))
+ '(font-lock-builtin-face ((t (:foreground "#647892"))))
  '(highlight ((t (:background "light steel blue"))))
- '(mode-line ((t (:background "steel blue" :foreground "white" :weight bold))))
- '(mode-line-highlight ((t (:inherit mode-line))))
- '(mode-line-inactive ((t (:inherit default :foreground "gray33" :weight bold))))
- '(region ((t (:extend t :background "gray90" :distant-foreground "gtk_selection_fg_color"))))
- '(term ((t (:background "black" :foreground "white"))))
- '(term-bold ((t (:background "black" :foreground "white" :weight bold))))
- '(term-color-blue ((t (:background "DeepSkyBlue4" :foreground "DeepSkyBlue4")))))
+ '(mode-line ((t (:background "steel blue" :foreground "white" :weight normal))))
+ '(mode-line-buffer-id ((t (:weight bold))))
+ '(mode-line-inactive ((t (:background "grey75" :foreground "white")))))
 
+(defun my/backward-delete-word (arg)
+  "Delete characters backward until encountering the beginning of a word.
+With argument ARG, do this that many times."
+  (interactive "p")
+  (my/delete-word (- arg)))
 
-;;; let's go!
+(defun my/delete-word (arg)
+  "Delete characters forward until encountering the end of a word.
+With argument ARG, do this that many times."
+  (interactive "p")
+  (delete-region (point) (progn (forward-word arg) (point))))
 
+(defun my/find-file-regex (pattern)
+  "Better matching for `counsel-find-file'.  Only search for PATTERN at the start of file basenames."
+  (concat "^" pattern))
+
+(defun my/configure-frames-and-fonts ()
+  ;; add some fonts to the standard fontset
+  ;; (highest-priority first)
+  (let ((my-fonts '("Source Code Pro Light 12"
+                    "Symbola 12")))
+    (create-fontset-from-fontset-spec standard-fontset-spec)
+    (dolist (font (reverse my-fonts))
+      (set-fontset-font "fontset-standard" 'unicode font nil 'prepend)))
+  ;; HTML codes for the Source Code Pro glyphs to use as fringe indicators
+  ;; (requires fringes to be nil)
+  (set-display-table-slot standard-display-table 'truncation 8230)
+  (set-display-table-slot standard-display-table 'wrap 8601)
+  ;; set some frame parameters
+  (setq-default
+   default-frame-alist
+   (list
+    '(font . "fontset-standard")
+    '(internal-border-width . 20)
+    '(undecorated . t)
+    '(vertical-scroll-bars . nil))))
+
+(defun my/configure-keyboard-shortcuts ()
+  ;; make Ctrl-x / Ctrl-v / etc behave as expected
+  (cua-mode)
+  ;; Ctrl-Backspace -> delete a word instead of killing it
+  (global-set-key [C-backspace] 'my/backward-delete-word)
+  ;; Ctrl-PgDn -> next window
+  (global-set-key [C-next] 'other-window)
+  ;; Ctrl-PgUp -> previous window
+  (global-set-key [C-prior]
+                  (lambda ()
+                    (interactive)
+                    (other-window -1)))
+  ;; Ctrl-a -> select entire buffer
+  (global-set-key (kbd "C-a") 'mark-whole-buffer)
+  ;; M-x -> counsel extended-command finder
+  (global-set-key (kbd "M-x") 'counsel-M-x)
+  ;; Ctrl-x Ctrl-f -> counsel file finder
+  (global-set-key (kbd "C-x C-f") 'counsel-find-file)
+  ;; Ctrl-x b -> counsel buffer switcher
+  (global-set-key (kbd "C-x b") 'counsel-switch-buffer)
+
+  ;; see also the various `with-eval-after-load' calls for more shortcut assignments
+  )
+
+(defun my/configure-misc ()
+  (global-linum-mode t)
+  (blink-cursor-mode -1)
+  ;; transparent fringe background
+  (set-face-attribute 'fringe nil :background nil)
+  ;; no arrow bitmaps on fringe
+  (assoc-delete-all 'continuation fringe-indicator-alist)
+  ;; nvm / node.js
+  (exec-path-from-shell-initialize)
+  ;; camelCase-aware navigation
+  (global-subword-mode t)
+  ;; prefer contents of help-at-point (e.g., Flymake) over whatever eldoc outputs
+  (advice-add
+   'eldoc-message :around
+   (lambda (oldfn doc-msg)
+     (let ((echo-help-string (help-at-pt-string)))
+       (if echo-help-string
+           (display-local-help)
+         (funcall oldfn doc-msg)))))
+  ;; apply theme
+  (vs-light-theme))
+
+(defun my/render-modeline (left-content center-content right-content)
+  "Return a string containing LEFT-CONTENT and RIGHT-CONTENT appropriately justified."
+  (let* ((left-str (format-mode-line left-content))
+         (center-str (format-mode-line center-content))
+         (right-str (format-mode-line right-content))
+         (column-width (/ (window-total-width) 3))
+         (left-gutter 1)
+         (right-gutter 1)
+         (left-spacing (- column-width
+                          (+ left-gutter
+                             (length left-str))))
+         (right-spacing (- (window-total-width)
+                           right-gutter
+                           (length right-str)
+                           (length center-str)
+                           left-spacing
+                           (length left-str)
+                           left-gutter)))
+                           
+    (format "%s%s%s%s%s%s%s"
+            (format (format "%%%ds" left-gutter) "")
+            left-str
+            (format (format "%%%ds" left-spacing) "")
+            center-str
+            (format (format "%%%ds" right-spacing) "")
+            right-str
+            (format (format "%%%ds" right-gutter) ""))))
+
+(defun my/configure-modeline ()
+  ;; modify some major-mode strings
+  (delight '((emacs-lisp-mode "ELisp")))
+  ;; remove some minor-mode strings ('C-h m' if I need to see them)
+  (delight
+   ;; ( <mode> <replacement string> <file which provides <mode>> )
+   '((company-mode nil "company")
+     (eldoc-mode nil "eldoc")
+     (lsp-mode nil "lsp-mode")
+     (mmm-mode nil nil)
+     (projectile-mode nil "projectile")
+     (subword-mode nil "subword")))
+  ;; customize the flymake mode-line string
+  (advice-add
+   'flymake--mode-line-format :filter-return
+   (lambda (&rest return-value)
+     (setf (seq-elt (car return-value) 0) " ✓")
+     return-value))
+  (setq-default mode-line-format
+        '((:eval
+           (my/render-modeline
+            ;; left
+            (list
+             (if (and (buffer-modified-p) (buffer-file-name)) "⚫ " "  ")
+             (propertize "%b" 'face 'mode-line-buffer-id))
+            ;; center
+            (list
+             mode-name
+             minor-mode-alist)
+            ;; right
+            (list
+             (if (stringp vc-mode)
+                 (format "%s"
+                         (format "%s%s"
+                                 (char-to-string 57504)
+                                 (format-mode-line '(vc-mode vc-mode))))
+               "")))))))
+
+(defun my/configure-file-associations ()
+  ;; associate file types with major modes
+  (push '("\\.js[x]?\\'" . js-mode) auto-mode-alist)
+  (push '("\\.json\\'" . bbjson-mode) auto-mode-alist)
+  (push '("\\.[s]?css\\'" . scss-mode) auto-mode-alist)
+  (push '("\\.less\\'" . scss-mode) auto-mode-alist)
+  (push '("\\.md\\'" . markdown-mode) auto-mode-alist)
+  (push '("\\.y[a]?ml\\'" . yaml-mode) auto-mode-alist)
+  (push '("\\.ts[x]?\\'" . typescript-mode) auto-mode-alist)
+  ;; run custom functions when some major modes are entered
+  (add-hook 'scss-mode-hook 'my/css-mode-hook)
+  (add-hook 'emacs-lisp-mode-hook 'my/common-lisp-mode-hook)
+  (add-hook 'js-mode-hook 'my/js-mode-hook)
+;  (add-hook 'json-mode-hook 'my/json-mode-hook)
+  (add-hook 'lisp-mode-hook 'my/common-lisp-mode-hook)
+;  (add-hook 'term-mode-hook 'my/terminal-mode-hook)
+;  (add-hook 'flymake-mode-hook 'my/flymake-mode-hook)
+  (add-hook 'typescript-mode-hook 'my/ts-mode-hook)
+  (add-hook 'minibuffer-setup-hook 'my/minibuf-entrance-hook)
+  (add-hook 'minibuffer-exit-hook 'my/minibuf-exit-hook)
+  (add-hook 'mhtml-mode-hook 'my/html-mode-hook))
+
+(defun my/css-mode-hook ()
+  (lsp)
+  (setq-local company-backends '(company-web-html company-files company-capf))
+  (flymake-stylelint-enable)
+  (company-mode t))
+
+(defun my/html-mode-hook ()
+  (setq-local company-backends '(company-web-html company-files company-capf))
+  (company-mode t)
+  ;; close the current tag upon '</'
+  (setq sgml-quick-keys 'close))
+
+(defun my/js-mode-hook ()
+  (projectile-mode t)
+  (lsp)
+  (setq-local js-jsx-syntax t)
+  (setq-local company-backends '(company-capf company-web-html company-files))
+  (flymake-eslint-enable)
+  ;; I want the key command in the xref map (which is LSP-aware) instead of this one
+  (define-key js-mode-map (kbd "M-.") nil))
+
+(defun my/json-mode-hook ()
+  (projectile-mode t))
+
+(defun my/ts-mode-hook ()
+  (projectile-mode)
+  (lsp)
+  (flymake-eslint-enable))
+
+(defun my/common-lisp-mode-hook ()
+  (company-mode t))
+
+(defun my/minibuf-entrance-hook ()
+  ;; stolen from Doom
+  (setq gc-cons-threshold most-positive-fixnum))
+
+(defun my/minibuf-exit-hook ()
+  ;; stolen from Doom
+  (run-at-time
+   1
+   nil
+   (lambda ()
+     (setq gc-cons-threshold my-gc-cons-threshold))))
+
+(defun my/update-packages ()
+  (interactive)
+  (straight-fetch-all)
+  (straight-pull-all)
+  (straight-rebuild-all))
 
 (add-hook
  'after-init-hook
  (lambda ()
-   (init/config-packages)
-   (init/config-fonts)
-   (init/config-file-associations)
-   (init/config-keyboard-shortcuts)
-   (init/config-modeline)
-   (init/config-whatever-else)
-   (all-the-icons-ivy-setup)
-   (auto-compression-mode -1)
-   (auto-encryption-mode -1)
-   (blink-cursor-mode -1)
-   (file-name-shadow-mode -1)
-   (global-auto-composition-mode -1)
-   (package-refresh-contents t)
-   ;; nvm/node.js
-   (exec-path-from-shell-initialize)
-   ;; keep me last
+   (my/configure-file-associations)
+   (my/configure-frames-and-fonts)
+   (my/configure-keyboard-shortcuts)
+   (my/configure-modeline)
+   (my/configure-misc)
+   ;; keep these last
+   (setq gc-cons-threshold my-gc-cons-threshold)
    (message "startup time: %s" (emacs-init-time))))
 
-
-(provide 'emacs)
-;;; .emacs ends here
+(provide 'init.el)
+;;; init.el ends here
