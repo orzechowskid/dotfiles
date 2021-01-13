@@ -28,6 +28,8 @@
 (straight-use-package 'company)
 (straight-use-package 'company-web)
 (straight-use-package 'counsel)
+(straight-use-package
+ '(css-in-js-mode :type git :host github :repo "orzechowskid/css-in-js.el"))
 (straight-use-package 'dap-mode)
 (straight-use-package 'delight)
 (straight-use-package 'dockerfile-mode)
@@ -38,6 +40,7 @@
  '(flymake-stylelint :type git :host github :repo "orzechowskid/flymake-stylelint"))
 (straight-use-package 'lsp-mode)
 (straight-use-package 'markdown-mode)
+(straight-use-package 'mmm-mode)
 (straight-use-package 'projectile)
 (straight-use-package 'scss-mode)
 (straight-use-package 'typescript-mode)
@@ -89,6 +92,8 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(auto-save-default nil)
+ '(backup-directory-alist '(("." . "~/.emacs.d/backups")))
  '(c-basic-offset 2)
  '(company-backends
    '(company-semantic company-capf company-files company-web-html))
@@ -101,7 +106,7 @@
  '(flymake-warning-bitmap '(flymake-big-indicator compilation-warning))
  '(fringe-mode '(24 . 0) nil (fringe))
  '(indent-tabs-mode nil)
- '(inhibit-startup-echo-area-message "dan")
+ '(inhibit-startup-echo-area-message (user-login-name))
  '(inhibit-startup-screen t)
  '(initial-scratch-message nil)
  '(ivy-magic-tilde nil)
@@ -114,7 +119,9 @@
  '(projectile-completion-system 'ivy)
  '(smie-config nil)
  '(straight-check-for-modifications '(check-on-save find-when-checking))
- '(tool-bar-mode nil))
+ '(tool-bar-mode nil)
+ '(typescript-indent-level 2)
+ '(vc-make-backup-files t))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
