@@ -23,6 +23,7 @@
       (eval-print-last-sexp)))
   (load bootstrap-file nil 'nomessage))
 
+(straight-use-package 'all-the-icons-ivy-rich)
 (straight-use-package
  '(bbjson-mode :type git :host github :repo "orzechowskid/bbjson-mode.el"))
 (straight-use-package 'company)
@@ -36,6 +37,7 @@
 (straight-use-package 'flymake-eslint)
 (straight-use-package
  '(flymake-stylelint :type git :host github :repo "orzechowskid/flymake-stylelint"))
+(straight-use-package 'ivy-rich)
 (straight-use-package 'lsp-mode)
 (straight-use-package 'markdown-mode)
 (straight-use-package 'projectile)
@@ -90,8 +92,6 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(c-basic-offset 2)
- '(company-backends
-   '(company-semantic company-capf company-files company-web-html))
  '(company-idle-delay 0.0)
  '(counsel-find-file-ignore-regexp "\\(?:\\`\\|[/\\]\\)\\(?:[#.]\\)")
  '(css-indent-offset 2)
@@ -195,13 +195,21 @@ With argument ARG, do this that many times."
   (global-set-key (kbd "C-x C-f") 'counsel-find-file)
   ;; Ctrl-x b -> counsel buffer switcher
   (global-set-key (kbd "C-x b") 'counsel-switch-buffer)
+  ;; Ctrl-s -> swiper buffer-search
+  (global-set-key (kbd "C-s") 'swiper)
+  ;; Ctrl-h f -> counsel function-selection
+  (global-set-key (kbd "C-h f") 'counsel-describe-function)
+  ;; Ctrl-h v -> counsel variable-selection
+  (global-set-key (kbd "C-h v") 'counsel-describe-variable)
 
   ;; see also the various `with-eval-after-load' calls for more shortcut assignments
   )
 
 (defun my/configure-misc ()
+  (all-the-icons-ivy-rich-mode t)
   (global-linum-mode t)
   (blink-cursor-mode -1)
+  (ivy-rich-mode t)
   ;; transparent fringe background
   (set-face-attribute 'fringe nil :background nil)
   ;; no arrow bitmaps on fringe
@@ -311,12 +319,10 @@ With argument ARG, do this that many times."
 
 (defun my/css-mode-hook ()
   (lsp)
-  (setq-local company-backends '(company-web-html company-files company-capf))
   (flymake-stylelint-enable)
   (company-mode t))
 
 (defun my/html-mode-hook ()
-  (setq-local company-backends '(company-web-html company-files company-capf))
   (company-mode t)
   ;; close the current tag upon '</'
   (setq sgml-quick-keys 'close))
@@ -325,7 +331,6 @@ With argument ARG, do this that many times."
   (projectile-mode t)
   (lsp)
   (setq-local js-jsx-syntax t)
-  (setq-local company-backends '(company-capf company-web-html company-files))
   (flymake-eslint-enable)
   ;; I want the key command in the xref map (which is LSP-aware) instead of this one
   (define-key js-mode-map (kbd "M-.") nil))
