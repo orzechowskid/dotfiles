@@ -37,6 +37,7 @@
 (straight-use-package 'flymake-eslint)
 (straight-use-package
  '(flymake-stylelint :type git :host github :repo "orzechowskid/flymake-stylelint"))
+(straight-use-package 'ivy-prescient)
 (straight-use-package 'ivy-rich)
 (straight-use-package 'lsp-mode)
 (straight-use-package 'markdown-mode)
@@ -206,6 +207,7 @@ With argument ARG, do this that many times."
   )
 
 (defun my/configure-misc ()
+  (ivy-prescient-mode t)
   (all-the-icons-ivy-rich-mode t)
   (global-linum-mode t)
   (blink-cursor-mode -1)
