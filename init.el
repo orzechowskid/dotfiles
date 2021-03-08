@@ -46,6 +46,9 @@
 (straight-use-package 'mmm-mode)
 (straight-use-package 'projectile)
 (straight-use-package 'scss-mode)
+(straight-use-package 'todotxt)
+(straight-use-package 'tree-sitter)
+(straight-use-package 'tree-sitter-langs)
 (straight-use-package 'typescript-mode)
 (straight-use-package 'vs-light-theme)
 (straight-use-package 'yaml-mode)
@@ -95,11 +98,10 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(auto-save-default nil)
- '(backup-directory-alist '(("." . "~/.emacs.d/backups")))
  '(c-basic-offset 2)
- '(company-idle-delay 0.0)
+ '(company-idle-delay 0.5)
  '(counsel-find-file-ignore-regexp "\\(?:\\`\\|[/\\]\\)\\(?:[#.]\\)")
+ '(create-lockfiles nil)
  '(css-indent-offset 2)
  '(debug-on-error nil)
  '(flymake-error-bitmap '(flymake-big-indicator compilation-error))
@@ -123,6 +125,7 @@
  '(straight-check-for-modifications '(check-on-save find-when-checking))
  '(straight-vc-git-default-protocol 'ssh)
  '(tool-bar-mode nil)
+ '(typescript-enabled-frameworks '(typescript exttypescript))
  '(typescript-indent-level 2)
  '(vc-make-backup-files t))
 (custom-set-faces
@@ -216,7 +219,9 @@ With argument ARG, do this that many times."
   )
 
 (defun my/configure-misc ()
-  (ivy-prescient-mode t)
+  (require 'tree-sitter)
+  (require 'tree-sitter-langs)
+  (global-tree-sitter-mode t)
   (all-the-icons-ivy-rich-mode t)
   (global-linum-mode t)
   (blink-cursor-mode -1)
@@ -238,7 +243,11 @@ With argument ARG, do this that many times."
            (display-local-help)
          (funcall oldfn doc-msg)))))
   ;; apply theme
-  (vs-light-theme))
+  (vs-light-theme)
+  (defvar autosave-dir (expand-file-name "~/.emacs.d/autosave/"))
+  (setq backup-directory-alist (list (cons ".*" (expand-file-name "~/.emacs.d/backup/"))))
+  (setq auto-save-list-file-prefix autosave-dir)
+  (setq auto-save-file-name-transforms `((".*" ,autosave-dir t))))
 
 (defun my/render-modeline (left-content center-content right-content)
   "Return a string containing LEFT-CONTENT and RIGHT-CONTENT appropriately justified."
@@ -279,7 +288,8 @@ With argument ARG, do this that many times."
      (lsp-mode nil "lsp-mode")
      (mmm-mode nil nil)
      (projectile-mode nil "projectile")
-     (subword-mode nil "subword")))
+     (subword-mode nil "subword")
+     (tree-sitter-mode nil "tree-sitter")))
   ;; customize the flymake mode-line string
   (advice-add
    'flymake--mode-line-format :filter-return
@@ -326,7 +336,8 @@ With argument ARG, do this that many times."
   (add-hook 'typescript-mode-hook 'my/ts-mode-hook)
   (add-hook 'minibuffer-setup-hook 'my/minibuf-entrance-hook)
   (add-hook 'minibuffer-exit-hook 'my/minibuf-exit-hook)
-  (add-hook 'mhtml-mode-hook 'my/html-mode-hook))
+  (add-hook 'mhtml-mode-hook 'my/html-mode-hook)
+  (add-hook 'tree-sitter-after-on-hook #'tree-sitter-hl-mode))
 
 (defun my/css-mode-hook ()
   (lsp)
