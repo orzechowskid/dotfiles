@@ -34,6 +34,7 @@
 (straight-use-package 'dap-mode)
 (straight-use-package 'delight)
 (straight-use-package 'dockerfile-mode)
+(straight-use-package 'dotenv-mode)
 (straight-use-package 'eldoc)
 (straight-use-package 'exec-path-from-shell)
 (straight-use-package 'flymake-eslint)
@@ -104,6 +105,7 @@
  '(create-lockfiles nil)
  '(css-indent-offset 2)
  '(debug-on-error nil)
+ '(eldoc-echo-area-prefer-doc-buffer t)
  '(flymake-error-bitmap '(flymake-big-indicator compilation-error))
  '(flymake-eslint-executable-name "eslint_d")
  '(flymake-stylelint-executable-args "-q")
@@ -146,7 +148,13 @@
  '(dap-ui-pending-breakpoint-face ((t (:background "pale goldenrod"))))
  '(flymake-warning ((t (:underline (:color "dark orange" :style wave)))))
  '(font-lock-builtin-face ((t (:foreground "#647892"))))
+ '(header-line ((t (:inherit mode-line :background "grey97" :foreground "grey20" :box nil))))
  '(highlight ((t (:background "light steel blue"))))
+ '(lsp-headerline-breadcrumb-path-hint-face ((t nil)))
+ '(lsp-headerline-breadcrumb-path-info-face ((t nil)))
+ '(lsp-headerline-breadcrumb-symbols-face ((t (:inherit font-lock-variable-name-face :weight bold))))
+ '(lsp-headerline-breadcrumb-symbols-hint-face ((t (:inherit lsp-headerline-breadcrumb-symbols-face))))
+ '(lsp-headerline-breadcrumb-symbols-info-face ((t (:inherit lsp-headerline-breadcrumb-symbols-face))))
  '(mode-line ((t (:background "steel blue" :foreground "white" :weight normal))))
  '(mode-line-buffer-id ((t (:weight bold))))
  '(mode-line-inactive ((t (:background "grey75" :foreground "white")))))
@@ -325,6 +333,7 @@ With argument ARG, do this that many times."
   (push '("\\.md\\'" . markdown-mode) auto-mode-alist)
   (push '("\\.y[a]?ml\\'" . yaml-mode) auto-mode-alist)
   (push '("\\.ts[x]?\\'" . typescript-mode) auto-mode-alist)
+  (push '("\\.env*\\'" . dotenv-mode) auto-mode-alist);
   ;; run custom functions when some major modes are entered
   (add-hook 'scss-mode-hook 'my/css-mode-hook)
   (add-hook 'emacs-lisp-mode-hook 'my/common-lisp-mode-hook)
@@ -353,6 +362,8 @@ With argument ARG, do this that many times."
   (projectile-mode t)
   (lsp)
   (setq-local js-jsx-syntax t)
+  ;; delegate to flymake instead of using whatever tsc reports
+  (setq lsp-diagnostics-provider :none)
   (flymake-eslint-enable)
   ;; I want the key command in the xref map (which is LSP-aware) instead of this one
   (define-key js-mode-map (kbd "M-.") nil))
@@ -385,6 +396,8 @@ With argument ARG, do this that many times."
   (straight-fetch-all)
   (straight-pull-all)
   (straight-rebuild-all))
+
+(defun yas-expand-snippet (&rest ignored))
 
 (add-hook
  'after-init-hook
