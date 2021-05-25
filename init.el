@@ -3,13 +3,22 @@
 ;;; Commentary:
 ;;; Code:
 
+;; temporary advice to allow straight.el to work with emacs binaries not compiled with native-comp support
+;; remove after the next version of straight.el is released
+(define-advice straight--build-native-compile
+    (:around (oldfun &rest args) fix-native-comp-test)
+  "Properly disable native compilation on unsupported Emacsen."
+  (when (and (fboundp 'native-comp-available-p)
+             (native-comp-available-p)
+             (fboundp 'native-compile-async))
+    (apply oldfun args)))
 
 (prefer-coding-system 'utf-8)
 (set-language-environment "UTF-8")
 (setq gc-cons-threshold most-positive-fixnum)
-
 (defvar my-gc-cons-threshold (* 1024 1024 20))
 
+(setq straight-check-for-modifications '(check-on-save find-when-checking))
 (defvar bootstrap-version)
 (let ((bootstrap-file
        (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
@@ -22,6 +31,7 @@
       (goto-char (point-max))
       (eval-print-last-sexp)))
   (load bootstrap-file nil 'nomessage))
+
 
 (straight-use-package 'all-the-icons-ivy-rich)
 (straight-use-package
@@ -118,7 +128,8 @@
  '(js-indent-level 2)
  '(js-switch-indent-offset 2)
  '(lsp-diagnostics-provider t)
- '(lsp-headerline-breadcrumb-enable nil)
+ '(lsp-enable-snippet nil)
+ '(lsp-headerline-breadcrumb-enable t)
  '(menu-bar-mode nil)
  '(projectile-completion-system 'ivy)
  '(smie-config nil)
@@ -193,6 +204,8 @@ With argument ARG, do this that many times."
   (cua-mode)
   ;; Ctrl-Backspace -> delete a word instead of killing it
   (global-set-key [C-backspace] 'my/backward-delete-word)
+  ;; Ctrl-Delete -> delete a word instead of killing it
+  (global-set-key [C-delete] 'my/delete-word)
   ;; Ctrl-PgDn -> next window
   (global-set-key [C-next] 'other-window)
   ;; Ctrl-PgUp -> previous window
@@ -337,7 +350,8 @@ With argument ARG, do this that many times."
   (add-hook 'minibuffer-setup-hook 'my/minibuf-entrance-hook)
   (add-hook 'minibuffer-exit-hook 'my/minibuf-exit-hook)
   (add-hook 'mhtml-mode-hook 'my/html-mode-hook)
-  (add-hook 'tree-sitter-after-on-hook #'tree-sitter-hl-mode))
+  (add-hook 'tree-sitter-after-on-hook #'tree-sitter-hl-mode)
+  (add-hook 'prog-mode-hook 'my/prog-mode-hook))
 
 (defun my/css-mode-hook ()
   (lsp)
@@ -367,6 +381,9 @@ With argument ARG, do this that many times."
 
 (defun my/common-lisp-mode-hook ()
   (company-mode t))
+
+(defun my/prog-mode-hook ()
+  (show-paren-mode t))
 
 (defun my/minibuf-entrance-hook ()
   ;; stolen from Doom
