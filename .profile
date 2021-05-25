@@ -4,3 +4,5 @@
 [[ "$(command -v node)" ]] && {
   export PATH=$PATH:$(dirname $(realpath $(command -v node)))
 }
+
+INTEL_AUDIO_POWERSAVE=false
