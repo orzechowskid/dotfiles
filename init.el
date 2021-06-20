@@ -7,6 +7,7 @@
 (prefer-coding-system 'utf-8)
 (set-language-environment "UTF-8")
 (setq gc-cons-threshold most-positive-fixnum)
+(setq read-process-output-max (* 1024 1024))
 
 (defvar my-gc-cons-threshold (* 1024 1024 20))
 
@@ -43,6 +44,7 @@
 (straight-use-package 'ivy-prescient)
 (straight-use-package 'ivy-rich)
 (straight-use-package 'lsp-mode)
+(straight-use-package 'lsp-ui)
 (straight-use-package 'markdown-mode)
 (straight-use-package 'mmm-mode)
 (straight-use-package 'projectile)
@@ -119,16 +121,17 @@
  '(js-enabled-frameworks nil)
  '(js-indent-level 2)
  '(js-switch-indent-offset 2)
- '(lsp-diagnostics-provider t)
- '(lsp-headerline-breadcrumb-enable nil)
+ '(lsp-modeline-code-actions-enable nil)
+ '(lsp-ui-sideline-enable nil)
+ '(lsp-ui-sideline-show-code-actions nil)
  '(menu-bar-mode nil)
  '(projectile-completion-system 'ivy)
  '(smie-config nil)
  '(straight-check-for-modifications '(check-on-save find-when-checking))
- '(straight-vc-git-default-protocol 'ssh)
  '(tool-bar-mode nil)
  '(typescript-enabled-frameworks '(typescript exttypescript))
  '(typescript-indent-level 2)
+ '(vc-annotate-background-mode t)
  '(vc-make-backup-files t))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
@@ -174,27 +177,6 @@ With argument ARG, do this that many times."
 (defun my/find-file-regex (pattern)
   "Better matching for `counsel-find-file'.  Only search for PATTERN at the start of file basenames."
   (concat "^" pattern))
-
-(defun my/configure-frames-and-fonts ()
-  ;; add some fonts to the standard fontset
-  ;; (highest-priority first)
-  (let ((my-fonts '("Source Code Pro Light 12"
-                    "Symbola 12")))
-    (create-fontset-from-fontset-spec standard-fontset-spec)
-    (dolist (font (reverse my-fonts))
-      (set-fontset-font "fontset-standard" 'unicode font nil 'prepend)))
-  ;; HTML codes for the Source Code Pro glyphs to use as fringe indicators
-  ;; (requires fringes to be nil)
-  (set-display-table-slot standard-display-table 'truncation 8230)
-  (set-display-table-slot standard-display-table 'wrap 8601)
-  ;; set some frame parameters
-  (setq-default
-   default-frame-alist
-   (list
-    '(font . "fontset-standard")
-    '(internal-border-width . 20)
-    '(undecorated . t)
-    '(vertical-scroll-bars . nil))))
 
 (defun my/configure-keyboard-shortcuts ()
   ;; make Ctrl-x / Ctrl-v / etc behave as expected
@@ -338,15 +320,13 @@ With argument ARG, do this that many times."
   (add-hook 'scss-mode-hook 'my/css-mode-hook)
   (add-hook 'emacs-lisp-mode-hook 'my/common-lisp-mode-hook)
   (add-hook 'js-mode-hook 'my/js-mode-hook)
-;  (add-hook 'json-mode-hook 'my/json-mode-hook)
   (add-hook 'lisp-mode-hook 'my/common-lisp-mode-hook)
-;  (add-hook 'term-mode-hook 'my/terminal-mode-hook)
-;  (add-hook 'flymake-mode-hook 'my/flymake-mode-hook)
   (add-hook 'typescript-mode-hook 'my/ts-mode-hook)
   (add-hook 'minibuffer-setup-hook 'my/minibuf-entrance-hook)
   (add-hook 'minibuffer-exit-hook 'my/minibuf-exit-hook)
   (add-hook 'mhtml-mode-hook 'my/html-mode-hook)
-  (add-hook 'tree-sitter-after-on-hook #'tree-sitter-hl-mode))
+  (add-hook 'tree-sitter-after-on-hook #'tree-sitter-hl-mode)
+  (add-hook 'vc-annotate-mode-hook 'my/vc-mode-hook))
 
 (defun my/css-mode-hook ()
   (lsp)
@@ -391,6 +371,10 @@ With argument ARG, do this that many times."
    (lambda ()
      (setq gc-cons-threshold my-gc-cons-threshold))))
 
+(defun my/vc-mode-hook ()
+  ;; default to 
+  (vc-annotate-toggle-annotation-visibility))
+
 (defun my/update-packages ()
   (interactive)
   (straight-fetch-all)
@@ -403,7 +387,6 @@ With argument ARG, do this that many times."
  'after-init-hook
  (lambda ()
    (my/configure-file-associations)
-   (my/configure-frames-and-fonts)
    (my/configure-keyboard-shortcuts)
    (my/configure-modeline)
    (my/configure-misc)
