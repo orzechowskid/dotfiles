@@ -5,13 +5,13 @@
 
 ;; temporary advice to allow straight.el to work with emacs binaries not compiled with native-comp support
 ;; remove after the next version of straight.el is released
-(define-advice straight--build-native-compile
-    (:around (oldfun &rest args) fix-native-comp-test)
-  "Properly disable native compilation on unsupported Emacsen."
-  (when (and (fboundp 'native-comp-available-p)
-             (native-comp-available-p)
-             (fboundp 'native-compile-async))
-    (apply oldfun args)))
+;(define-advice straight--build-native-compile
+;    (:around (oldfun &rest args) fix-native-comp-test)
+;  "Properly disable native compilation on unsupported Emacsen."
+;  (when (and (fboundp 'native-comp-available-p)
+;             (native-comp-available-p)
+;             (fboundp 'native-compile-async))
+;    (apply oldfun args)))
 
 (prefer-coding-system 'utf-8)
 (set-language-environment "UTF-8")
@@ -213,6 +213,10 @@ With argument ARG, do this that many times."
   (global-set-key (kbd "C-h f") 'counsel-describe-function)
   ;; Ctrl-h v -> counsel variable-selection
   (global-set-key (kbd "C-h v") 'counsel-describe-variable)
+  ;; Ctrl-; -> comment/uncomment region
+  (global-set-key (kbd "C-;") 'comment-or-uncomment-region)
+  ;; C-x 9 -> switch between a horizontal and vertical window split (if 2 windows visible)
+  (global-set-key (kbd "C-x 9") 'my/rotate-window-split)
 
   ;; see also the various `with-eval-after-load' calls for more shortcut assignments
   )
@@ -335,7 +339,7 @@ With argument ARG, do this that many times."
   (add-hook 'minibuffer-exit-hook 'my/minibuf-exit-hook)
   (add-hook 'mhtml-mode-hook 'my/html-mode-hook)
   (add-hook 'tree-sitter-after-on-hook #'tree-sitter-hl-mode)
-  (add-hook 'vc-annotate-mode-hook 'my/vc-mode-hook))
+  (add-hook 'vc-annotate-mode-hook 'my/vc-mode-hook)
   (add-hook 'prog-mode-hook 'my/prog-mode-hook))
 
 (defun my/css-mode-hook ()
@@ -387,6 +391,31 @@ With argument ARG, do this that many times."
 (defun my/vc-mode-hook ()
   ;; default to hiding the commit details
   (vc-annotate-toggle-annotation-visibility))
+
+(defun my/rotate-window-split ()
+  (interactive)
+  (if (= (count-windows) 2)
+      (let* ((this-win-buffer (window-buffer))
+             (next-win-buffer (window-buffer (next-window)))
+             (this-win-edges (window-edges (selected-window)))
+             (next-win-edges (window-edges (next-window)))
+             (this-win-2nd (not (and (<= (car this-win-edges)
+                                         (car next-win-edges))
+                                     (<= (cadr this-win-edges)
+                                         (cadr next-win-edges)))))
+             (splitter
+              (if (= (car this-win-edges)
+                     (car (window-edges (next-window))))
+                  'split-window-horizontally
+                'split-window-vertically)))
+        (delete-other-windows)
+        (let ((first-win (selected-window)))
+          (funcall splitter)
+          (if this-win-2nd (other-window 1))
+          (set-window-buffer (selected-window) this-win-buffer)
+          (set-window-buffer (next-window) next-win-buffer)
+          (select-window first-win)
+          (if this-win-2nd (other-window 1))))))
 
 (defun my/update-packages ()
   (interactive)
