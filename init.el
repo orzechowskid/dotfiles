@@ -182,8 +182,8 @@
            (display-local-help)
          (funcall oldfn doc-msg)))))
   ;; memory management while inside minibuffer
-  (add-hook 'minibuffer-setup-hook 'my/minibuffer-setup-hook)
-  (add-hook 'minibuffer-exit-hook 'my/minibuffer-exit-hook)
+  (add-hook 'minibuffer-setup-hook 'my/minibuf-setup-hook)
+  (add-hook 'minibuffer-exit-hook 'my/minibuf-exit-hook)
   ;; apply theme and appearance preferences
   (vs-light-theme)
   (set-face-attribute 'fringe nil :background nil)
@@ -250,7 +250,7 @@
   "Better matching for `counsel-find-file'.  Only search for PATTERN at the start of file basenames."
   (concat "^" pattern))
 
-(defun my/minibuf-entrance-hook ()
+(defun my/minibuf-setup-hook ()
   ;; stolen from Doom
   (setq gc-cons-threshold most-positive-fixnum))
 
