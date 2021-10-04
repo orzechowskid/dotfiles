@@ -3,21 +3,35 @@
 ;;; Commentary:
 ;;; Code:
 
-;; temporary advice to allow straight.el to work with emacs binaries not compiled with native-comp support
-;; remove after the next version of straight.el is released
-;(define-advice straight--build-native-compile
-;    (:around (oldfun &rest args) fix-native-comp-test)
-;  "Properly disable native compilation on unsupported Emacsen."
-;  (when (and (fboundp 'native-comp-available-p)
-;             (native-comp-available-p)
-;             (fboundp 'native-compile-async))
-;    (apply oldfun args)))
-
-(prefer-coding-system 'utf-8)
+;; try real hard to use UTF-8 everywhere all the time
+;; (some of this might be unnecessary and/or deprecated)
 (set-language-environment "UTF-8")
+(set-charset-priority 'unicode)
+(setq locale-coding-system 'utf-8)
+(set-terminal-coding-system 'utf-8)
+(set-keyboard-coding-system 'utf-8)
+(set-selection-coding-system 'utf-8)
+(prefer-coding-system 'utf-8)
+(setq default-process-coding-system '(utf-8-unix . utf-8-unix))
+
+;; memory management: perform no GC during startup, then raise the limit from the
+;; default value to something more suitable for modern machines
+(defvar my/gc-cons-threshold (* 1024 1024 20))
 (setq gc-cons-threshold most-positive-fixnum)
-(setq read-process-output-max (* 1024 1024 5))
-(defvar my-gc-cons-threshold (* 1024 1024 20))
+
+;; a directory for any custom scripts
+(add-to-list 'load-path "~/.emacs.d/lisp/")
+
+(add-hook
+ 'after-init-hook
+ (lambda ()
+   (my/configure-file-associations)
+   (my/configure-global-keyboard-shortcuts)
+   (my/configure-modeline)
+   (my/configure-misc)
+   ;; keep these last
+   (setq gc-cons-threshold my/gc-cons-threshold)
+   (message "startup time: %s" (emacs-init-time))))
 
 (setq straight-check-for-modifications '(check-on-save find-when-checking))
 (defvar bootstrap-version)
@@ -33,94 +47,287 @@
       (eval-print-last-sexp)))
   (load bootstrap-file nil 'nomessage))
 
+(mapcar
+ #'straight-use-package
+ '(all-the-icons-ivy-rich
+   '(bbjson-mode :type git :host github :repo "orzechowskid/bbjson-mode.el")
+   company
+   counsel
+   '(css-in-js-mode :type git :host github :repo "orzechowskid/css-in-js.el")
+   delight
+   dockerfile-mode
+   dotenv-mode
+   eldoc
+   exec-path-from-shell
+   '(flymake-stylelint :type git :host github :repo "orzechowskid/flymake-stylelint")
+   lsp-mode
+   mmm-mode
+   projectile
+   typescript-mode
+   scss-mode
+   tree-sitter
+   tree-sitter-langs
+   '(tsi :type git :host github :repo "orzechowskid/tsi.el")
+   vs-light-theme
+   yaml-mode))
 
-(straight-use-package 'all-the-icons-ivy-rich)
-(straight-use-package
- '(bbjson-mode :type git :host github :repo "orzechowskid/bbjson-mode.el"))
-(straight-use-package 'company)
-(straight-use-package 'company-web)
-(straight-use-package 'counsel)
-(straight-use-package
- '(css-in-js-mode :type git :host github :repo "orzechowskid/css-in-js.el"))
-(straight-use-package 'dap-mode)
-(straight-use-package 'delight)
-(straight-use-package 'dockerfile-mode)
-(straight-use-package 'dotenv-mode)
-(straight-use-package 'eldoc)
-(straight-use-package 'exec-path-from-shell)
-(straight-use-package 'flymake-eslint)
-(straight-use-package
- '(flymake-stylelint :type git :host github :repo "orzechowskid/flymake-stylelint"))
-(straight-use-package 'ivy-prescient)
-(straight-use-package 'ivy-rich)
-(straight-use-package 'lsp-mode)
-(straight-use-package 'lsp-ui)
-(straight-use-package 'markdown-mode)
-(straight-use-package 'mmm-mode)
-(straight-use-package 'projectile)
-(straight-use-package 'scss-mode)
-(straight-use-package 'todotxt)
-(straight-use-package 'tree-sitter)
-(straight-use-package 'tree-sitter-langs)
-(straight-use-package 'typescript-mode)
-(straight-use-package 'vs-light-theme)
-(straight-use-package 'yaml-mode)
+(with-eval-after-load 'company
+  (define-key company-mode-map (kbd "M-/") 'company-complete))
 
-(with-eval-after-load 'css-mode
-  ;; until someone (*cough*) files a PR against css-mode
-  (push "sticky" (alist-get "position" css-property-alist nil nil #'equal)))
+(with-eval-after-load 'counsel
+  (push '(counsel-find-file . my/find-file-regex) ivy-re-builders-alist))
+
+(with-eval-after-load 'flymake
+  (define-key flymake-mode-map (kbd "C-c ! n") 'flymake-goto-next-error)
+  (define-key flymake-mode-map (kbd "C-c ! p") 'flymake-goto-prev-error)
+  ;; steal the flycheck error indicator for flymake's use
+  ;; maxmum width is 16px according to emacs docs
+  (define-fringe-bitmap 'flymake-big-indicator
+      (vector #b0000000000000000
+              #b0000000000000000
+              #b0000000000000000
+              #b0111000111000000
+              #b0011100011100000
+              #b0001110001110000
+              #b0000111000111000
+              #b0000011100011100
+              #b0000011100011100
+              #b0000111000111000
+              #b0001110001110000
+              #b0011100011100000
+              #b0111000111000000
+              #b0000000000000000
+              #b0000000000000000
+              #b0000000000000000)
+    16 16 'center))
 
 (with-eval-after-load 'projectile
   ;; Ctrl-p -> find file in project
   (define-key projectile-mode-map (kbd "C-p") 'projectile-find-file))
 
-(with-eval-after-load 'counsel
-  (push '(counsel-find-file . my/find-file-regex) ivy-re-builders-alist))
+(with-eval-after-load 'rjsx-mode
+  ;; prefer the jump function provided by LSP and/or xref-jsx
+  (define-key js2-mode-map (kbd "M-.") nil))
 
-(with-eval-after-load 'lsp-mode
-  (require 'dap-chrome))
+(with-eval-after-load 'tree-sitter-langs
+  (tree-sitter-require 'tsx)
+  (add-to-list 'tree-sitter-major-mode-language-alist '(typescript-mode . tsx))
+  (tree-sitter-require 'json)
+  (add-to-list 'tree-sitter-major-mode-language-alist '(bbjson-mode . json)))
 
-(with-eval-after-load 'company
-  (define-key company-mode-map (kbd "M-/") 'company-complete))
+(require 'tree-sitter)
+(require 'tree-sitter-langs)
 
-(with-eval-after-load 'flymake
-  (define-key flymake-mode-map (kbd "C-c ! n") 'flymake-goto-next-error)
-  (define-key flymake-mode-map (kbd "C-c ! p") 'flymake-goto-prev-error)
-  ;; maxmum width is 16px according to emacs docs
-  (define-fringe-bitmap 'flymake-big-indicator
-    (vector #b0000000000000000
-            #b0000000000000000
-            #b0000000000000000
-            #b0111000111000000
-            #b0011100011100000
-            #b0001110001110000
-            #b0000111000111000
-            #b0000011100011100
-            #b0000011100011100
-            #b0000111000111000
-            #b0001110001110000
-            #b0011100011100000
-            #b0111000111000000
-            #b0000000000000000
-            #b0000000000000000
-            #b0000000000000000)
-    16 16 'center))
+(defun my/configure-file-associations ()
+  ;; a hook which configures things common to all programming modes
+  (add-hook
+   'prog-mode-hook
+   (lambda ()
+     (auto-composition-mode 0)
+     (mouse-wheel-mode 0)
+     (projectile-mode)
+     (subword-mode)
+     (show-paren-mode)
+     (tooltip-mode 0)))
+
+  ;; mode-specific hooks
+  (add-hook
+   'emacs-lisp-mode-hook
+   (lambda ()
+     (company-mode)))
+  (add-hook
+   'typescript-mode-hook
+   (lambda ()
+     (lsp)
+     (tree-sitter-mode)
+     (tree-sitter-hl-mode)))
+  (push '("\\.js[x]?\\'" . typescript-mode) auto-mode-alist)
+  (push '("\\.ts[x]?\\'" . typescript-mode) auto-mode-alist)
+  (add-hook
+   'scss-mode-hook
+   (lambda ()
+     (flymake-stylelint-enable)))
+  (push '("\\.[s]?css\\'" . scss-mode) auto-mode-alist)
+  (add-hook
+   'html-mode-hook
+   (lambda ()
+     (company-mode)
+     ;; close the current tag upon '</'
+     (setq sgml-quick-keys 'close))))
+
+(defun my/configure-misc ()
+  ;; TODO: this doesn't feel great
+  ;; ;; show documentation info at point as well as warnings/errors at point
+  ;; (advice-add
+  ;;  'eldoc-message :after
+  ;;  (lambda (oldfn &rest args)
+  ;;    "Do some stuff to the Help buffer too"
+  ;;    (let ((help-msg
+  ;;           (help-at-pt-string))
+  ;;          (eldoc-msg
+  ;;           eldoc-last-message))
+  ;;      ;; write any docs for the current symbol to the Help buffer
+  ;;      (when eldoc-msg
+  ;;        (save-window-excursion
+  ;;          (with-help-window (help-buffer)
+  ;;            (princ eldoc-msg))))
+  ;;      ;; write any warnings/errors to the echo area
+  ;;      (when help-msg
+  ;;        (display-local-help)))))
+  (advice-add
+   'eldoc-message :around
+   (lambda (oldfn doc-msg)
+     (let ((echo-help-string (help-at-pt-string)))
+       (if echo-help-string
+           (display-local-help)
+         (funcall oldfn doc-msg)))))
+  ;; memory management while inside minibuffer
+  (add-hook 'minibuffer-setup-hook 'my/minibuffer-setup-hook)
+  (add-hook 'minibuffer-exit-hook 'my/minibuffer-exit-hook)
+  ;; apply theme and appearance preferences
+  (vs-light-theme)
+  (set-face-attribute 'fringe nil :background nil)
+  (assoc-delete-all 'continuation fringe-indicator-alist)
+  ;; apply some globally-helpful modes
+  (global-linum-mode t)
+  (global-subword-mode t)
+  ;; disable some globally-unhelpful modes
+  (blink-cursor-mode 0)
+  (auto-composition-mode 0)
+  (auto-compression-mode 0)
+  (auto-encryption-mode 0)
+  (dirtrack-mode 0)
+  ;; set `exec-path` to something resonable
+  (exec-path-from-shell-initialize)
+  ;; store all backup files in a separate directory so we don't pollute our projects
+  (defvar autosave-dir (expand-file-name "~/.emacs.d/autosave/"))
+  (setq backup-directory-alist (list (cons ".*" (expand-file-name "~/.emacs.d/backup/"))))
+  (setq auto-save-list-file-prefix autosave-dir)
+  (setq auto-save-file-name-transforms `((".*" ,autosave-dir t))))
+
+(defun my/configure-modeline ()
+  ;; modify some major-mode strings
+  (delight '((emacs-lisp-mode "ELisp")))
+  ;; remove some minor-mode strings ('C-h m' if I need to see them)
+  (delight
+   ;; ( <mode> <replacement string> <file which provides <mode>> )
+   '((company-mode nil "company")
+     (eldoc-mode nil "eldoc")
+     (lsp-mode nil "lsp-mode")
+     (mmm-mode nil nil)
+     (projectile-mode nil "projectile")
+     (subword-mode nil "subword")
+     (tree-sitter-mode nil "tree-sitter")))
+  ;; customize the flymake mode-line string
+  (advice-add
+   'flymake--mode-line-format :filter-return
+   (lambda (&rest return-value)
+     (setf (seq-elt (car return-value) 0) " ✓")
+     return-value))
+  (setq-default
+   mode-line-format
+   '((:eval
+      (my/render-modeline
+       ;; left
+       (list
+	(if (and (buffer-modified-p) (buffer-file-name)) "⚫ " "  ")
+	(propertize "%b" 'face 'mode-line-buffer-id))
+       ;; center
+       (list
+	mode-name
+	minor-mode-alist)
+       ;; right
+       (list
+	(if (stringp vc-mode)
+	    (format "%s"
+		    (format "%s%s"
+			    ;; the little branch-switcheroo guy
+			    (char-to-string 57504)
+			    (format-mode-line '(vc-mode vc-mode))))
+	  "")))))))
+
+(defun my/find-file-regex (pattern)
+  "Better matching for `counsel-find-file'.  Only search for PATTERN at the start of file basenames."
+  (concat "^" pattern))
+
+(defun my/minibuf-entrance-hook ()
+  ;; stolen from Doom
+  (setq gc-cons-threshold most-positive-fixnum))
+
+(defun my/minibuf-exit-hook ()
+  ;; stolen from Doom
+  (run-at-time
+   1
+   nil
+   (lambda ()
+     (setq gc-cons-threshold my-gc-cons-threshold))))
+
+(defun my/render-modeline (left-content center-content right-content)
+  "Return a string containing LEFT-CONTENT and RIGHT-CONTENT appropriately justified."
+  (let*
+      ((left-str (format-mode-line left-content))
+       (center-str (format-mode-line center-content))
+       (right-str (format-mode-line right-content))
+       (column-width (/ (window-total-width) 3))
+       (left-gutter 1)
+       (right-gutter 1)
+       (left-spacing
+	(- column-width
+           (+ left-gutter
+              (length left-str))))
+       (right-spacing
+	(- (window-total-width)
+           right-gutter
+           (length right-str)
+           (length center-str)
+           left-spacing
+           (length left-str)
+           left-gutter)))
+    
+    (format
+     "%s%s%s%s%s%s%s"
+     (format (format "%%%ds" left-gutter) "")
+     left-str
+     (format (format "%%%ds" left-spacing) "")
+     center-str
+     (format (format "%%%ds" right-spacing) "")
+     right-str
+     (format (format "%%%ds" right-gutter) ""))))
+
+(defun my/rotate-window-split ()
+  (interactive)
+  (if (= (count-windows) 2)
+      (let* ((this-win-buffer (window-buffer))
+             (next-win-buffer (window-buffer (next-window)))
+             (this-win-edges (window-edges (selected-window)))
+             (next-win-edges (window-edges (next-window)))
+             (this-win-2nd (not (and (<= (car this-win-edges)
+                                         (car next-win-edges))
+                                     (<= (cadr this-win-edges)
+                                         (cadr next-win-edges)))))
+             (splitter
+              (if (= (car this-win-edges)
+                     (car (window-edges (next-window))))
+                  'split-window-horizontally
+                'split-window-vertically)))
+        (delete-other-windows)
+        (let ((first-win (selected-window)))
+          (funcall splitter)
+          (if this-win-2nd (other-window 1))
+          (set-window-buffer (selected-window) this-win-buffer)
+          (set-window-buffer (next-window) next-win-buffer)
+          (select-window first-win)
+          (if this-win-2nd (other-window 1))))))
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(c-basic-offset 2)
- '(company-idle-delay 0.5)
- '(counsel-find-file-ignore-regexp "\\(?:\\`\\|[/\\]\\)\\(?:[#.]\\)")
- '(create-lockfiles nil)
+ '(company-backends '(company-capf))
+ '(css-in-js-enable-indentation t)
  '(css-indent-offset 2)
- '(debug-on-error nil)
- '(eldoc-echo-area-prefer-doc-buffer t)
  '(flymake-error-bitmap '(flymake-big-indicator compilation-error))
- '(flymake-eslint-executable-name "eslint_d")
- '(flymake-stylelint-executable-args "-q")
  '(flymake-warning-bitmap '(flymake-big-indicator compilation-warning))
  '(fringe-mode '(24 . 0) nil (fringe))
  '(indent-tabs-mode nil)
@@ -130,16 +337,16 @@
  '(ivy-magic-tilde nil)
  '(js-enabled-frameworks nil)
  '(js-indent-level 2)
- '(js-switch-indent-offset 2)
+ '(lisp-indent-function 'common-lisp-indent-function)
+ '(lsp-enable-snippet nil)
+ '(lsp-modeline-code-actions-enable nil)
+ '(lsp-modeline-diagnostics-enable nil)
+ '(lsp-modeline-workspace-status-enable nil)
  '(menu-bar-mode nil)
  '(projectile-completion-system 'ivy)
- '(smie-config nil)
- '(straight-check-for-modifications '(check-on-save find-when-checking))
+ '(read-process-output-max (* 1024 1024 5) t)
  '(tool-bar-mode nil)
- '(typescript-enabled-frameworks '(typescript exttypescript))
- '(typescript-indent-level 2)
- '(vc-annotate-background-mode t)
- '(vc-make-backup-files t))
+ '(typescript-indent-level 2))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -160,11 +367,30 @@
  '(font-lock-builtin-face ((t (:foreground "#647892"))))
  '(header-line ((t (:inherit mode-line :background "grey97" :foreground "grey20" :box nil))))
  '(highlight ((t (:background "light steel blue"))))
+ '(hl-line ((t (:inherit highlight))))
+ '(js2-error ((t nil)))
+ '(js2-external-variable ((t nil)))
+ '(js2-function-call ((t nil)))
+ '(js2-function-param ((t nil)))
+ '(js2-instance-member ((t nil)))
+ '(js2-jsdoc-html-tag-delimiter ((t nil)))
+ '(js2-jsdoc-html-tag-name ((t nil)))
+ '(js2-jsdoc-tag ((t nil)))
+ '(js2-jsdoc-type ((t nil)))
+ '(js2-jsdoc-value ((t nil)))
+ '(js2-object-property ((t nil)))
+ '(js2-object-property-access ((t nil)))
+ '(js2-private-function-call ((t nil)))
+ '(js2-private-member ((t nil)))
+ '(js2-warning ((t nil)))
  '(lsp-headerline-breadcrumb-path-hint-face ((t nil)))
  '(lsp-headerline-breadcrumb-path-info-face ((t nil)))
  '(lsp-headerline-breadcrumb-symbols-face ((t (:inherit font-lock-variable-name-face :weight bold))))
  '(lsp-headerline-breadcrumb-symbols-hint-face ((t (:inherit lsp-headerline-breadcrumb-symbols-face))))
  '(lsp-headerline-breadcrumb-symbols-info-face ((t (:inherit lsp-headerline-breadcrumb-symbols-face))))
+ '(mmm-code-submode-face ((t (:background "LightGray"))))
+ '(mmm-default-submode-face ((t nil)))
+ '(mmm-delimiter-face ((t nil)) t)
  '(mode-line ((t (:background "steel blue" :foreground "white" :weight normal))))
  '(mode-line-buffer-id ((t (:weight bold))))
  '(mode-line-inactive ((t (:background "grey75" :foreground "white")))))
@@ -181,11 +407,7 @@ With argument ARG, do this that many times."
   (interactive "p")
   (delete-region (point) (progn (forward-word arg) (point))))
 
-(defun my/find-file-regex (pattern)
-  "Better matching for `counsel-find-file'.  Only search for PATTERN at the start of file basenames."
-  (concat "^" pattern))
-
-(defun my/configure-keyboard-shortcuts ()
+(defun my/configure-global-keyboard-shortcuts ()
   ;; make Ctrl-x / Ctrl-v / etc behave as expected
   (cua-mode)
   ;; Ctrl-Backspace -> delete a word instead of killing it
@@ -221,220 +443,13 @@ With argument ARG, do this that many times."
   ;; see also the various `with-eval-after-load' calls for more shortcut assignments
   )
 
-(defun my/configure-misc ()
-  (require 'tree-sitter)
-  (require 'tree-sitter-langs)
-  (global-tree-sitter-mode t)
-  (all-the-icons-ivy-rich-mode t)
-  (global-linum-mode t)
-  (blink-cursor-mode -1)
-  (ivy-rich-mode t)
-  ;; transparent fringe background
-  (set-face-attribute 'fringe nil :background nil)
-  ;; no arrow bitmaps on fringe
-  (assoc-delete-all 'continuation fringe-indicator-alist)
-  ;; nvm / node.js
-  (exec-path-from-shell-initialize)
-  ;; camelCase-aware navigation
-  (global-subword-mode t)
-  ;; prefer contents of help-at-point (e.g., Flymake) over whatever eldoc outputs
-  (advice-add
-   'eldoc-message :around
-   (lambda (oldfn doc-msg)
-     (let ((echo-help-string (help-at-pt-string)))
-       (if echo-help-string
-           (display-local-help)
-         (funcall oldfn doc-msg)))))
-  ;; apply theme
-  (vs-light-theme)
-  (defvar autosave-dir (expand-file-name "~/.emacs.d/autosave/"))
-  (setq backup-directory-alist (list (cons ".*" (expand-file-name "~/.emacs.d/backup/"))))
-  (setq auto-save-list-file-prefix autosave-dir)
-  (setq auto-save-file-name-transforms `((".*" ,autosave-dir t))))
-
-(defun my/render-modeline (left-content center-content right-content)
-  "Return a string containing LEFT-CONTENT and RIGHT-CONTENT appropriately justified."
-  (let* ((left-str (format-mode-line left-content))
-         (center-str (format-mode-line center-content))
-         (right-str (format-mode-line right-content))
-         (column-width (/ (window-total-width) 3))
-         (left-gutter 1)
-         (right-gutter 1)
-         (left-spacing (- column-width
-                          (+ left-gutter
-                             (length left-str))))
-         (right-spacing (- (window-total-width)
-                           right-gutter
-                           (length right-str)
-                           (length center-str)
-                           left-spacing
-                           (length left-str)
-                           left-gutter)))
-                           
-    (format "%s%s%s%s%s%s%s"
-            (format (format "%%%ds" left-gutter) "")
-            left-str
-            (format (format "%%%ds" left-spacing) "")
-            center-str
-            (format (format "%%%ds" right-spacing) "")
-            right-str
-            (format (format "%%%ds" right-gutter) ""))))
-
-(defun my/configure-modeline ()
-  ;; modify some major-mode strings
-  (delight '((emacs-lisp-mode "ELisp")))
-  ;; remove some minor-mode strings ('C-h m' if I need to see them)
-  (delight
-   ;; ( <mode> <replacement string> <file which provides <mode>> )
-   '((company-mode nil "company")
-     (eldoc-mode nil "eldoc")
-     (lsp-mode nil "lsp-mode")
-     (mmm-mode nil nil)
-     (projectile-mode nil "projectile")
-     (subword-mode nil "subword")
-     (tree-sitter-mode nil "tree-sitter")))
-  ;; customize the flymake mode-line string
-  (advice-add
-   'flymake--mode-line-format :filter-return
-   (lambda (&rest return-value)
-     (setf (seq-elt (car return-value) 0) " ✓")
-     return-value))
-  (setq-default mode-line-format
-        '((:eval
-           (my/render-modeline
-            ;; left
-            (list
-             (if (and (buffer-modified-p) (buffer-file-name)) "⚫ " "  ")
-             (propertize "%b" 'face 'mode-line-buffer-id))
-            ;; center
-            (list
-             mode-name
-             minor-mode-alist)
-            ;; right
-            (list
-             (if (stringp vc-mode)
-                 (format "%s"
-                         (format "%s%s"
-                                 (char-to-string 57504)
-                                 (format-mode-line '(vc-mode vc-mode))))
-               "")))))))
-
-(defun my/configure-file-associations ()
-  ;; associate file types with major modes
-  (push '("\\.js[x]?\\'" . js-mode) auto-mode-alist)
-  (push '("\\.json\\'" . bbjson-mode) auto-mode-alist)
-  (push '("\\.[s]?css\\'" . scss-mode) auto-mode-alist)
-  (push '("\\.less\\'" . scss-mode) auto-mode-alist)
-  (push '("\\.md\\'" . markdown-mode) auto-mode-alist)
-  (push '("\\.y[a]?ml\\'" . yaml-mode) auto-mode-alist)
-  (push '("\\.ts[x]?\\'" . typescript-mode) auto-mode-alist)
-  (push '("\\.env*\\'" . dotenv-mode) auto-mode-alist);
-  ;; run custom functions when some major modes are entered
-  (add-hook 'scss-mode-hook 'my/css-mode-hook)
-  (add-hook 'emacs-lisp-mode-hook 'my/common-lisp-mode-hook)
-  (add-hook 'js-mode-hook 'my/js-mode-hook)
-  (add-hook 'lisp-mode-hook 'my/common-lisp-mode-hook)
-  (add-hook 'typescript-mode-hook 'my/ts-mode-hook)
-  (add-hook 'minibuffer-setup-hook 'my/minibuf-entrance-hook)
-  (add-hook 'minibuffer-exit-hook 'my/minibuf-exit-hook)
-  (add-hook 'mhtml-mode-hook 'my/html-mode-hook)
-  (add-hook 'tree-sitter-after-on-hook #'tree-sitter-hl-mode)
-  (add-hook 'vc-annotate-mode-hook 'my/vc-mode-hook)
-  (add-hook 'prog-mode-hook 'my/prog-mode-hook))
-
-(defun my/css-mode-hook ()
-  (lsp)
-  (flymake-stylelint-enable)
-  (company-mode t))
-
-(defun my/html-mode-hook ()
-  (company-mode t)
-  ;; close the current tag upon '</'
-  (setq sgml-quick-keys 'close))
-
-(defun my/js-mode-hook ()
-  (projectile-mode t)
-  (lsp)
-  (setq-local js-jsx-syntax t)
-  ;; delegate to flymake instead of using whatever tsc reports
-  (setq lsp-diagnostics-provider :none)
-  (flymake-eslint-enable)
-  ;; I want the key command in the xref map (which is LSP-aware) instead of this one
-  (define-key js-mode-map (kbd "M-.") nil))
-
-(defun my/json-mode-hook ()
-  (projectile-mode t))
-
-(defun my/ts-mode-hook ()
-  (projectile-mode)
-  (lsp)
-  (flymake-eslint-enable))
-
-(defun my/common-lisp-mode-hook ()
-  (company-mode t))
-
-(defun my/prog-mode-hook ()
-  (show-paren-mode t))
-
-(defun my/minibuf-entrance-hook ()
-  ;; stolen from Doom
-  (setq gc-cons-threshold most-positive-fixnum))
-
-(defun my/minibuf-exit-hook ()
-  ;; stolen from Doom
-  (run-at-time
-   1
-   nil
-   (lambda ()
-     (setq gc-cons-threshold my-gc-cons-threshold))))
-
-(defun my/vc-mode-hook ()
-  ;; default to hiding the commit details
-  (vc-annotate-toggle-annotation-visibility))
-
-(defun my/rotate-window-split ()
-  (interactive)
-  (if (= (count-windows) 2)
-      (let* ((this-win-buffer (window-buffer))
-             (next-win-buffer (window-buffer (next-window)))
-             (this-win-edges (window-edges (selected-window)))
-             (next-win-edges (window-edges (next-window)))
-             (this-win-2nd (not (and (<= (car this-win-edges)
-                                         (car next-win-edges))
-                                     (<= (cadr this-win-edges)
-                                         (cadr next-win-edges)))))
-             (splitter
-              (if (= (car this-win-edges)
-                     (car (window-edges (next-window))))
-                  'split-window-horizontally
-                'split-window-vertically)))
-        (delete-other-windows)
-        (let ((first-win (selected-window)))
-          (funcall splitter)
-          (if this-win-2nd (other-window 1))
-          (set-window-buffer (selected-window) this-win-buffer)
-          (set-window-buffer (next-window) next-win-buffer)
-          (select-window first-win)
-          (if this-win-2nd (other-window 1))))))
-
 (defun my/update-packages ()
   (interactive)
-  (straight-fetch-all)
   (straight-pull-all)
   (straight-rebuild-all))
 
-(defun yas-expand-snippet (&rest ignored))
-
-(add-hook
- 'after-init-hook
- (lambda ()
-   (my/configure-file-associations)
-   (my/configure-keyboard-shortcuts)
-   (my/configure-modeline)
-   (my/configure-misc)
-   ;; keep these last
-   (setq gc-cons-threshold my-gc-cons-threshold)
-   (message "startup time: %s" (emacs-init-time))))
+;; something involving company-mode and lsp attempts to invoke this function
+(defun yas-expand-snippet ())
 
 (provide 'init.el)
 ;;; init.el ends here

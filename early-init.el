@@ -15,7 +15,11 @@
    default-frame-alist
    (list
     '(font . "fontset-standard")
+    '(horizontal-scroll-bars . nil)
     '(internal-border-width . 20)
+    '(menu-bar-lines . nil)
+    '(scroll-bar-width . 0)
+    '(tool-bar-lines . 0)
     '(undecorated . t)
     '(vertical-scroll-bars . nil))))
 
