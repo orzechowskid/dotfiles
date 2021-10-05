@@ -260,7 +260,7 @@
    1
    nil
    (lambda ()
-     (setq gc-cons-threshold my-gc-cons-threshold))))
+     (setq gc-cons-threshold my/gc-cons-threshold))))
 
 (defun my/render-modeline (left-content center-content right-content)
   "Return a string containing LEFT-CONTENT and RIGHT-CONTENT appropriately justified."
