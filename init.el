@@ -34,6 +34,9 @@
    (message "startup time: %s" (emacs-init-time))))
 
 (setq straight-check-for-modifications '(check-on-save find-when-checking))
+(setq straight-vc-git-default-protocol 'ssh)
+(setq straight-vc-git-force-protocol t)
+(setq straight-vc-git-default-clone-depth 3)
 (defvar bootstrap-version)
 (let ((bootstrap-file
        (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
@@ -60,6 +63,7 @@
    eldoc
    exec-path-from-shell
    '(flymake-stylelint :type git :host github :repo "orzechowskid/flymake-stylelint")
+   ivy-prescient
    lsp-mode
    mmm-mode
    projectile
@@ -75,7 +79,9 @@
   (define-key company-mode-map (kbd "M-/") 'company-complete))
 
 (with-eval-after-load 'counsel
-  (push '(counsel-find-file . my/find-file-regex) ivy-re-builders-alist))
+  (push '(counsel-find-file . my/find-file-regex) ivy-re-builders-alist)
+  ;; according to the README for prescient.el , it must be loaded after counsel
+  (require 'ivy-prescient))
 
 (with-eval-after-load 'flymake
   (define-key flymake-mode-map (kbd "C-c ! n") 'flymake-goto-next-error)
@@ -100,6 +106,9 @@
               #b0000000000000000
               #b0000000000000000)
     16 16 'center))
+
+;;(with-eval-after-load 'lsp-mode
+;;  (setq lsp-print-io t))
 
 (with-eval-after-load 'projectile
   ;; Ctrl-p -> find file in project
@@ -230,7 +239,7 @@
       (my/render-modeline
        ;; left
        (list
-	(if (and (buffer-modified-p) (buffer-file-name)) "⚫ " "  ")
+	(if (and (buffer-modified-p) (buffer-file-name)) "● " "  ")
 	(propertize "%b" 'face 'mode-line-buffer-id))
        ;; center
        (list
@@ -325,6 +334,7 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(company-backends '(company-capf))
+ '(create-lockfiles nil)
  '(css-in-js-enable-indentation t)
  '(css-indent-offset 2)
  '(flymake-error-bitmap '(flymake-big-indicator compilation-error))
@@ -338,6 +348,8 @@
  '(js-enabled-frameworks nil)
  '(js-indent-level 2)
  '(lisp-indent-function 'common-lisp-indent-function)
+ '(lsp-clients-typescript-init-opts
+   '(:importModuleSpecifierEnding "js" :generateReturnInDocTemplate t))
  '(lsp-enable-snippet nil)
  '(lsp-modeline-code-actions-enable nil)
  '(lsp-modeline-diagnostics-enable nil)
@@ -346,7 +358,8 @@
  '(projectile-completion-system 'ivy)
  '(read-process-output-max (* 1024 1024 5) t)
  '(tool-bar-mode nil)
- '(typescript-indent-level 2))
+ '(typescript-indent-level 2)
+ '(vc-make-backup-files t))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -440,6 +453,7 @@ With argument ARG, do this that many times."
   ;; C-x 9 -> switch between a horizontal and vertical window split (if 2 windows visible)
   (global-set-key (kbd "C-x 9") 'my/rotate-window-split)
 
+  (define-key global-map (kbd "C-x C-k RET") nil)
   ;; see also the various `with-eval-after-load' calls for more shortcut assignments
   )
 
