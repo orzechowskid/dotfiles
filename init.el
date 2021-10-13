@@ -81,7 +81,8 @@
 (with-eval-after-load 'counsel
   (push '(counsel-find-file . my/find-file-regex) ivy-re-builders-alist)
   ;; according to the README for prescient.el , it must be loaded after counsel
-  (require 'ivy-prescient))
+  (require 'ivy-prescient)
+  (ivy-prescient-mode t))
 
 (with-eval-after-load 'flymake
   (define-key flymake-mode-map (kbd "C-c ! n") 'flymake-goto-next-error)
@@ -228,11 +229,19 @@
      (subword-mode nil "subword")
      (tree-sitter-mode nil "tree-sitter")))
   ;; customize the flymake mode-line string
+  (setq flymake-mode-line-title " ✓")
   (advice-add
-   'flymake--mode-line-format :filter-return
-   (lambda (&rest return-value)
-     (setf (seq-elt (car return-value) 0) " ✓")
-     return-value))
+   'flymake--mode-line-counter :filter-return
+   (lambda (return-value)
+     (mapcar
+      (lambda (list-item)
+        (list
+         :eval
+         (if (length> list-item 1)
+             (elt list-item 1)
+           "")))
+      return-value)))
+
   (setq-default
    mode-line-format
    '((:eval
