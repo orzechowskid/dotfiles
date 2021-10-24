@@ -7,13 +7,14 @@ previous_battery=`upower -i $(upower -e | grep BAT) | sed -rn 's/^\s*percentage:
 while true; do
 	sleep 60
 
+        current_ac_status=`upower -i $(upower -e | grep AC) | sed -rn 's/^\s*online:\s*([a-z]+)$/\1/p'`
 	current_battery=`upower -i $(upower -e | grep BAT) | sed -rn 's/^\s*percentage:\s*([0-9]+)%$/\1/p'`
 
 	if (((( $current_battery >= $threshold_hi ) && $previous_battery < $threshold_hi ) && $current_battery > $previous_battery )); then
 		notify-send --category=device --urgency=normal -a "Battery monitor" "Battery full"
 	fi
 
-        if (((( $current_battery <= $threshold_low ) && $previous_battery > $threshold_low ) && $current_battery < $previous_battery )); then
+        if ((((( $current_battery <= $threshold_low ) && $previous_battery > $threshold_low ) && $current_battery < $previous_battery ) && $current_ac_status != 1 )); then
         	notify-send --category=device --urgency=normal -a "Battery monitor" "Battery low"
         fi
 

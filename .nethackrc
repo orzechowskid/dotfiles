@@ -11,12 +11,13 @@ OPTIONS=hilite_status:hunger/always/yellow
 OPTIONS=hilite_status:condition/all/orange
 OPTIONS=hitpointbar
 OPTIONS=menucolors
+OPTIONS=perm_invent
 OPTIONS=pettype:cat
 OPTIONS=pickup_types:$
 OPTIONS=statushilites=5
 OPTIONS=symset:IBMgraphics
-#OPTIONS=windowtype:curses
-OPTIONS=perm_invent
+#OPTIONS=symset:curses
+OPTIONS=windowtype:curses
 
 MENUCOLOR="blessed"=green
 MENUCOLOR="cursed"=red
@@ -24,10 +25,8 @@ MENUCOLOR="uncursed"=yellow
 
 SYMBOLS=S_boulder:0
 
-#OPTIONS=windowtype:curses
 OPTIONS=align_status:bottom
 OPTIONS=align_message:top
-#OPTIONS=windowborders:3
-#OPTIONS=term_cols:124
-#OPTIONS=term_rows:32
-#OPTIONS=perm_invent
+OPTIONS=term_rows:28
+OPTIONS=term_cols:100
+OPTIONS=guicolor
