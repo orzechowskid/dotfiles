@@ -62,6 +62,8 @@
    dotenv-mode
    eldoc
    exec-path-from-shell
+   flycheck
+   '(flymake-eslint :type git :host github :repo "orzechowskid/flymake-eslint")
    '(flymake-stylelint :type git :host github :repo "orzechowskid/flymake-stylelint")
    ivy-prescient
    lsp-mode
@@ -82,7 +84,8 @@
   (push '(counsel-find-file . my/find-file-regex) ivy-re-builders-alist)
   ;; according to the README for prescient.el , it must be loaded after counsel
   (require 'ivy-prescient)
-  (ivy-prescient-mode t))
+  (ivy-prescient-mode t)
+  (prescient-persist-mode t))
 
 (with-eval-after-load 'flymake
   (define-key flymake-mode-map (kbd "C-c ! n") 'flymake-goto-next-error)
@@ -150,7 +153,8 @@
    (lambda ()
      (lsp)
      (tree-sitter-mode)
-     (tree-sitter-hl-mode)))
+     (tree-sitter-hl-mode)
+     (tsi-typescript-mode)))
   (push '("\\.js[x]?\\'" . typescript-mode) auto-mode-alist)
   (push '("\\.ts[x]?\\'" . typescript-mode) auto-mode-alist)
   (add-hook
@@ -462,6 +466,7 @@ With argument ARG, do this that many times."
   ;; C-x 9 -> switch between a horizontal and vertical window split (if 2 windows visible)
   (global-set-key (kbd "C-x 9") 'my/rotate-window-split)
 
+  (define-key global-map (kbd "C-/") nil)
   (define-key global-map (kbd "C-x C-k RET") nil)
   ;; see also the various `with-eval-after-load' calls for more shortcut assignments
   )
