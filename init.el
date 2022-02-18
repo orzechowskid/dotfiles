@@ -3,6 +3,8 @@
 ;;; Commentary:
 ;;; Code:
 
+(setq debug-on-error t)
+
 ;; try real hard to use UTF-8 everywhere all the time
 ;; (some of this might be unnecessary and/or deprecated)
 (set-language-environment "UTF-8")
@@ -87,6 +89,10 @@
   (ivy-prescient-mode t)
   (prescient-persist-mode t))
 
+(with-eval-after-load 'flycheck
+    ;; try some CSS-in-JS linting magic
+  (flycheck-add-mode 'css-stylelint 'typescript-mode))
+
 (with-eval-after-load 'flymake
   (define-key flymake-mode-map (kbd "C-c ! n") 'flymake-goto-next-error)
   (define-key flymake-mode-map (kbd "C-c ! p") 'flymake-goto-prev-error)
@@ -126,7 +132,9 @@
   (tree-sitter-require 'tsx)
   (add-to-list 'tree-sitter-major-mode-language-alist '(typescript-mode . tsx))
   (tree-sitter-require 'json)
-  (add-to-list 'tree-sitter-major-mode-language-alist '(bbjson-mode . json)))
+  (add-to-list 'tree-sitter-major-mode-language-alist '(bbjson-mode . json))
+  (tree-sitter-require 'css)
+  (add-to-list 'tree-sitter-major-mode-language-alist '(scss-mode . css)))
 
 (require 'tree-sitter)
 (require 'tree-sitter-langs)
@@ -154,9 +162,27 @@
      (lsp)
      (tree-sitter-mode)
      (tree-sitter-hl-mode)
-     (tsi-typescript-mode)))
+     (tsi-typescript-mode)
+     (when
+         ;; css-in-js-mode derives from mmm-mode
+         ;; mmm-mode will run mode hooks again
+         ;; mmm-mode doesn't point to a file, so there's no buffer filename
+         (and
+          buffer-file-name
+          (string-match-p "\\.tsx\\'" buffer-file-name))
+       (css-in-js-mode t)
+       (progn
+         (require 'lsp-diagnostics)
+         (lsp-diagnostics-flycheck-enable)
+         (require 'flycheck)
+         (flycheck-add-next-checker 'lsp 'css-stylelint)))))
   (push '("\\.js[x]?\\'" . typescript-mode) auto-mode-alist)
   (push '("\\.ts[x]?\\'" . typescript-mode) auto-mode-alist)
+  (add-hook
+   'js-mode-hook
+   (lambda ()
+     (lsp)))
+  (push '("\\.mjs\\'" . javascript-mode) auto-mode-alist)
   (add-hook
    'scss-mode-hook
    (lambda ()
@@ -361,13 +387,13 @@
  '(js-enabled-frameworks nil)
  '(js-indent-level 2)
  '(lisp-indent-function 'common-lisp-indent-function)
- '(lsp-clients-typescript-init-opts
-   '(:importModuleSpecifierEnding "js" :generateReturnInDocTemplate t))
+ '(lsp-clients-typescript-init-opts '(:generateReturnInDocTemplate t))
  '(lsp-enable-snippet nil)
  '(lsp-modeline-code-actions-enable nil)
  '(lsp-modeline-diagnostics-enable nil)
  '(lsp-modeline-workspace-status-enable nil)
  '(menu-bar-mode nil)
+ '(mmm-submode-decoration-level 0)
  '(projectile-completion-system 'ivy)
  '(read-process-output-max (* 1024 1024 5) t)
  '(tool-bar-mode nil)
@@ -381,11 +407,13 @@
  '(company-preview ((t (:inherit company-tooltip-selection))))
  '(company-preview-common ((t nil)))
  '(company-preview-search ((t nil)))
- '(company-scrollbar-bg ((t (:background "gray95"))))
- '(company-scrollbar-fg ((t (:background "#808080"))))
+ '(company-scrollbar-bg ((t (:background "gray95"))) t)
+ '(company-scrollbar-fg ((t (:background "#808080"))) t)
  '(company-tooltip ((t (:background "white smoke" :foreground "black"))))
  '(company-tooltip-annotation ((t (:foreground "gray45"))))
  '(company-tooltip-common ((t (:foreground "gray14" :weight normal))))
+ '(company-tooltip-scrollbar-thumb ((t (:background "gray50"))))
+ '(company-tooltip-scrollbar-track ((t (:inherit company-tooltip-common))))
  '(company-tooltip-selection ((t (:inherit highlight))))
  '(dap-ui-breakpoint-verified-fringe ((t (:background "black" :weight bold))))
  '(dap-ui-pending-breakpoint-face ((t (:background "pale goldenrod"))))
@@ -414,6 +442,8 @@
  '(lsp-headerline-breadcrumb-symbols-face ((t (:inherit font-lock-variable-name-face :weight bold))))
  '(lsp-headerline-breadcrumb-symbols-hint-face ((t (:inherit lsp-headerline-breadcrumb-symbols-face))))
  '(lsp-headerline-breadcrumb-symbols-info-face ((t (:inherit lsp-headerline-breadcrumb-symbols-face))))
+ '(markdown-inline-code-face ((t (:inherit (markdown-code-face font-lock-constant-face) :background "cornsilk"))))
+ '(markdown-pre-face ((t (:inherit (markdown-code-face font-lock-constant-face) :background "cornsilk"))))
  '(mmm-code-submode-face ((t (:background "LightGray"))))
  '(mmm-default-submode-face ((t nil)))
  '(mmm-delimiter-face ((t nil)) t)
