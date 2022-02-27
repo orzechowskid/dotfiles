@@ -69,6 +69,7 @@
    '(flymake-stylelint :type git :host github :repo "orzechowskid/flymake-stylelint")
    ivy-prescient
    lsp-mode
+   magit
    mmm-mode
    projectile
    typescript-mode
@@ -119,6 +120,12 @@
 
 ;;(with-eval-after-load 'lsp-mode
 ;;  (setq lsp-print-io t))
+
+(with-eval-after-load 'magit
+  ;; sometimes it's up to us to inform vc-mode of changes to the repo
+  (advice-add 'magit-checkout :after
+              (lambda (&rest ignored)
+                (vc-refresh-state))))
 
 (with-eval-after-load 'projectile
   ;; Ctrl-p -> find file in project
