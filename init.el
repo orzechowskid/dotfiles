@@ -3,7 +3,7 @@
 ;;; Commentary:
 ;;; Code:
 
-(setq debug-on-error t)
+;;(setq debug-on-error t)
 
 ;; try real hard to use UTF-8 everywhere all the time
 ;; (some of this might be unnecessary and/or deprecated)
@@ -36,8 +36,8 @@
    (message "startup time: %s" (emacs-init-time))))
 
 (setq straight-check-for-modifications '(check-on-save find-when-checking))
-;(setq straight-vc-git-default-protocol 'ssh)
-;(setq straight-vc-git-force-protocol t)
+(setq straight-vc-git-default-protocol 'ssh)
+(setq straight-vc-git-force-protocol t)
 (setq straight-vc-git-default-clone-depth 1)
 (defvar bootstrap-version)
 (let ((bootstrap-file
@@ -58,11 +58,12 @@
    '(bbjson-mode :type git :host github :repo "orzechowskid/bbjson-mode.el")
    company
    counsel
-   '(css-in-js-mode :type git :host github :repo "orzechowskid/css-in-js.el")
+;;   '(css-in-js-mode :type git :host github :repo "orzechowskid/css-in-js.el")
    delight
    dockerfile-mode
    dotenv-mode
    eldoc
+   '(eslint-disable-rule :type git :host github :repo "DamienCassou/eslint-disable-rule")
    exec-path-from-shell
    flycheck
    '(flymake-eslint :type git :host github :repo "orzechowskid/flymake-eslint")
@@ -71,12 +72,13 @@
    lsp-mode
    magit
    mmm-mode
+   origami
    projectile
    typescript-mode
-   scss-mode
    tree-sitter
    tree-sitter-langs
    '(tsi :type git :host github :repo "orzechowskid/tsi.el")
+   '(tsx-mode :type git :host github :repo "orzechowskid/tsx-mode.el")
    vs-light-theme
    yaml-mode))
 
@@ -125,6 +127,9 @@
   ;; sometimes it's up to us to inform vc-mode of changes to the repo
   (advice-add 'magit-checkout :after
               (lambda (&rest ignored)
+                (vc-refresh-state)))
+  (advice-add 'magit-branch-and-checkout :after
+              (lambda (&rest ignored)
                 (vc-refresh-state))))
 
 (with-eval-after-load 'projectile
@@ -156,6 +161,7 @@
      (projectile-mode)
      (subword-mode)
      (show-paren-mode)
+     (global-display-fill-column-indicator-mode)
      (tooltip-mode 0)))
 
   ;; mode-specific hooks
@@ -177,14 +183,14 @@
          (and
           buffer-file-name
           (string-match-p "\\.tsx\\'" buffer-file-name))
-       (css-in-js-mode t)
+       ;; (css-in-js-mode t)
        (progn
          (require 'lsp-diagnostics)
          (lsp-diagnostics-flycheck-enable)
          (require 'flycheck)
          (flycheck-add-next-checker 'lsp 'css-stylelint)))))
   (push '("\\.js[x]?\\'" . typescript-mode) auto-mode-alist)
-  (push '("\\.ts[x]?\\'" . typescript-mode) auto-mode-alist)
+  (push '("\\.ts[x]?\\'" . tsx-mode) auto-mode-alist)
   (add-hook
    'js-mode-hook
    (lambda ()
@@ -381,8 +387,8 @@
  ;; If there is more than one, they won't work right.
  '(company-backends '(company-capf))
  '(create-lockfiles nil)
- '(css-in-js-enable-indentation t)
  '(css-indent-offset 2)
+ '(fill-column 79)
  '(flymake-error-bitmap '(flymake-big-indicator compilation-error))
  '(flymake-warning-bitmap '(flymake-big-indicator compilation-warning))
  '(fringe-mode '(24 . 0) nil (fringe))
@@ -395,6 +401,7 @@
  '(js-indent-level 2)
  '(lisp-indent-function 'common-lisp-indent-function)
  '(lsp-clients-typescript-init-opts '(:generateReturnInDocTemplate t))
+ '(lsp-clients-typescript-preferences '(:generateReturnInDocTemplate t))
  '(lsp-enable-snippet nil)
  '(lsp-modeline-code-actions-enable nil)
  '(lsp-modeline-diagnostics-enable nil)
@@ -424,6 +431,7 @@
  '(company-tooltip-selection ((t (:inherit highlight))))
  '(dap-ui-breakpoint-verified-fringe ((t (:background "black" :weight bold))))
  '(dap-ui-pending-breakpoint-face ((t (:background "pale goldenrod"))))
+ '(fill-column-indicator ((t (:foreground "#d0d0d0"))))
  '(flymake-warning ((t (:underline (:color "dark orange" :style wave)))))
  '(font-lock-builtin-face ((t (:foreground "#647892"))))
  '(header-line ((t (:inherit mode-line :background "grey97" :foreground "grey20" :box nil))))
