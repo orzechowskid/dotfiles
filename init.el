@@ -53,48 +53,43 @@
   (load bootstrap-file nil 'nomessage))
 
 (mapcar
- #'straight-use-package
- '(all-the-icons-ivy-rich
-   '(bbjson-mode :type git :host github :repo "orzechowskid/bbjson-mode.el")
+ 'straight-use-package
+ '((bbjson-mode :type git :protocol ssh :host github :repo "orzechowskid/bbjson-mode.el")
    company
-   counsel
-;;   '(css-in-js-mode :type git :host github :repo "orzechowskid/css-in-js.el")
+   consult
+   coverlay
+   (css-in-js-mode :type git :protocol ssh :host github :repo "orzechowskid/css-in-js.el")
    delight
    dockerfile-mode
    dotenv-mode
    eldoc
-   '(eslint-disable-rule :type git :host github :repo "DamienCassou/eslint-disable-rule")
+   '(eslint-disable-rule :type git :protocol ssh :host github :repo "DamienCassou/eslint-disable-rule")
    exec-path-from-shell
    flycheck
-   '(flymake-eslint :type git :host github :repo "orzechowskid/flymake-eslint")
-   '(flymake-stylelint :type git :host github :repo "orzechowskid/flymake-stylelint")
-   ivy-prescient
+   (flymake-stylelint :type git :protocol ssh :host github :repo "orzechowskid/flymake-stylelint")
    lsp-mode
    magit
-   mmm-mode
-   origami
+   marginalia
+   prescient
    projectile
    typescript-mode
+   scss-mode
+   selectrum
+   selectrum-prescient
    tree-sitter
    tree-sitter-langs
-   '(tsi :type git :host github :repo "orzechowskid/tsi.el")
-   '(tsx-mode :type git :host github :repo "orzechowskid/tsx-mode.el")
+   (tsi :type git :protocol ssh :host github :repo "orzechowskid/tsi.el")
+   (tsx-mode :type git :protocol ssh :host github :repo "orzechowskid/tsx-mode.el")
    vs-light-theme
    yaml-mode))
 
 (with-eval-after-load 'company
   (define-key company-mode-map (kbd "M-/") 'company-complete))
 
-(with-eval-after-load 'counsel
-  (push '(counsel-find-file . my/find-file-regex) ivy-re-builders-alist)
-  ;; according to the README for prescient.el , it must be loaded after counsel
-  (require 'ivy-prescient)
-  (ivy-prescient-mode t)
-  (prescient-persist-mode t))
-
 (with-eval-after-load 'flycheck
-    ;; try some CSS-in-JS linting magic
-  (flycheck-add-mode 'css-stylelint 'typescript-mode))
+  ;; try some CSS-in-JS linting magic
+  (flycheck-add-mode 'css-stylelint 'typescript-mode)
+  (flycheck-add-mode 'css-stylelint 'tsx-mode))
 
 (with-eval-after-load 'flymake
   (define-key flymake-mode-map (kbd "C-c ! n") 'flymake-goto-next-error)
@@ -120,9 +115,6 @@
               #b0000000000000000)
     16 16 'center))
 
-;;(with-eval-after-load 'lsp-mode
-;;  (setq lsp-print-io t))
-
 (with-eval-after-load 'magit
   ;; sometimes it's up to us to inform vc-mode of changes to the repo
   (advice-add 'magit-checkout :after
@@ -131,6 +123,9 @@
   (advice-add 'magit-branch-and-checkout :after
               (lambda (&rest ignored)
                 (vc-refresh-state))))
+
+(with-eval-after-load 'markdown
+  (define-key markdown-mode-map (kbd "M-.") 'markdown-follow-link-at-point))
 
 (with-eval-after-load 'projectile
   ;; Ctrl-p -> find file in project
@@ -141,15 +136,22 @@
   (define-key js2-mode-map (kbd "M-.") nil))
 
 (with-eval-after-load 'tree-sitter-langs
-  (tree-sitter-require 'tsx)
-  (add-to-list 'tree-sitter-major-mode-language-alist '(typescript-mode . tsx))
   (tree-sitter-require 'json)
   (add-to-list 'tree-sitter-major-mode-language-alist '(bbjson-mode . json))
   (tree-sitter-require 'css)
   (add-to-list 'tree-sitter-major-mode-language-alist '(scss-mode . css)))
 
-(require 'tree-sitter)
-(require 'tree-sitter-langs)
+(with-eval-after-load 'selectrum-prescient
+  (selectrum-mode t)
+  (selectrum-prescient-mode t)
+  (prescient-persist-mode t))
+
+(mapcar
+ 'require
+ '(consult
+   prescient
+   selectrum-prescient
+   tree-sitter-langs))
 
 (defun my/configure-file-associations ()
   ;; a hook which configures things common to all programming modes
@@ -164,32 +166,21 @@
      (global-display-fill-column-indicator-mode)
      (tooltip-mode 0)))
 
+  (push '("\\.json\\'" . bbjson-mode) auto-mode-alist)
+
   ;; mode-specific hooks
   (add-hook
    'emacs-lisp-mode-hook
    (lambda ()
      (company-mode)))
+  (push '("\\.js[x]?\\'" . javascript-mode) auto-mode-alist)
   (add-hook
-   'typescript-mode-hook
+   'tsx-mode-hook
    (lambda ()
-     (lsp)
-     (tree-sitter-mode)
-     (tree-sitter-hl-mode)
-     (tsi-typescript-mode)
-     (when
-         ;; css-in-js-mode derives from mmm-mode
-         ;; mmm-mode will run mode hooks again
-         ;; mmm-mode doesn't point to a file, so there's no buffer filename
-         (and
-          buffer-file-name
-          (string-match-p "\\.tsx\\'" buffer-file-name))
-       ;; (css-in-js-mode t)
-       (progn
-         (require 'lsp-diagnostics)
-         (lsp-diagnostics-flycheck-enable)
-         (require 'flycheck)
-         (flycheck-add-next-checker 'lsp 'css-stylelint)))))
-  (push '("\\.js[x]?\\'" . typescript-mode) auto-mode-alist)
+     (setq-local coverlay:base-path
+           (let* ((package-json (locate-dominating-file (buffer-file-name (current-buffer)) "package.json")))
+             (file-name-directory (expand-file-name package-json))))
+     (coverlay-watch-file (concat coverlay:base-path "coverage/lcov.info"))))
   (push '("\\.ts[x]?\\'" . tsx-mode) auto-mode-alist)
   (add-hook
    'js-mode-hook
@@ -199,6 +190,7 @@
   (add-hook
    'scss-mode-hook
    (lambda ()
+     (company-mode)
      (flymake-stylelint-enable)))
   (push '("\\.[s]?css\\'" . scss-mode) auto-mode-alist)
   (add-hook
@@ -242,8 +234,12 @@
   (set-face-attribute 'fringe nil :background nil)
   (assoc-delete-all 'continuation fringe-indicator-alist)
   ;; apply some globally-helpful modes
-  (global-linum-mode t)
+  (global-display-fill-column-indicator-mode t)
+  (global-display-line-numbers-mode t)
+  (marginalia-mode t)
   (global-subword-mode t)
+  ;; I got 99 columns but the fringe ain't one
+  (setq-default fill-column 99)
   ;; disable some globally-unhelpful modes
   (blink-cursor-mode 0)
   (auto-composition-mode 0)
@@ -256,7 +252,11 @@
   (defvar autosave-dir (expand-file-name "~/.emacs.d/autosave/"))
   (setq backup-directory-alist (list (cons ".*" (expand-file-name "~/.emacs.d/backup/"))))
   (setq auto-save-list-file-prefix autosave-dir)
-  (setq auto-save-file-name-transforms `((".*" ,autosave-dir t))))
+  (setq auto-save-file-name-transforms `((".*" ,autosave-dir t)))
+  ;; if I ever need to pass arguments to git I can add back the pound character myself
+  (consult-customize
+   consult-git-grep
+   :initial nil))
 
 (defun my/configure-modeline ()
   ;; modify some major-mode strings
@@ -265,6 +265,7 @@
   (delight
    ;; ( <mode> <replacement string> <file which provides <mode>> )
    '((company-mode nil "company")
+     (coverlay-minor-mode nil "coverlay")
      (eldoc-mode nil "eldoc")
      (lsp-mode nil "lsp-mode")
      (mmm-mode nil nil)
@@ -310,6 +311,11 @@
 (defun my/find-file-regex (pattern)
   "Better matching for `counsel-find-file'.  Only search for PATTERN at the start of file basenames."
   (concat "^" pattern))
+
+(defun my/magit-create-checkout (&optional branch-name)
+  (interactive "Mnew branch name: ")
+  ;; TODO: check for presence of git repo
+  (message "branch name is %s" branch-name))
 
 (defun my/minibuf-setup-hook ()
   ;; stolen from Doom
@@ -385,9 +391,13 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(bbjson-indent-offset 2)
  '(company-backends '(company-capf))
+ '(coverlay:tested-line-background-color nil)
+ '(coverlay:untested-line-background-color "lavenderblush")
  '(create-lockfiles nil)
  '(css-indent-offset 2)
+ '(cua-mode t)
  '(fill-column 79)
  '(flymake-error-bitmap '(flymake-big-indicator compilation-error))
  '(flymake-warning-bitmap '(flymake-big-indicator compilation-warning))
@@ -396,21 +406,19 @@
  '(inhibit-startup-echo-area-message (user-login-name))
  '(inhibit-startup-screen t)
  '(initial-scratch-message nil)
- '(ivy-magic-tilde nil)
  '(js-enabled-frameworks nil)
- '(js-indent-level 2)
+ '(js-indent-level 4)
  '(lisp-indent-function 'common-lisp-indent-function)
  '(lsp-clients-typescript-init-opts '(:generateReturnInDocTemplate t))
  '(lsp-clients-typescript-preferences '(:generateReturnInDocTemplate t))
  '(lsp-enable-snippet nil)
- '(lsp-modeline-code-actions-enable nil)
- '(lsp-modeline-diagnostics-enable nil)
- '(lsp-modeline-workspace-status-enable nil)
  '(menu-bar-mode nil)
  '(mmm-submode-decoration-level 0)
- '(projectile-completion-system 'ivy)
+ '(projectile-completion-system 'auto)
  '(read-process-output-max (* 1024 1024 5) t)
+ '(selectrum-mode t)
  '(tool-bar-mode nil)
+ '(tsi-typescript-indent-offset 2)
  '(typescript-indent-level 2)
  '(vc-make-backup-files t))
 (custom-set-faces
@@ -452,11 +460,14 @@
  '(js2-private-function-call ((t nil)))
  '(js2-private-member ((t nil)))
  '(js2-warning ((t nil)))
+ '(line-number ((t (:background "#ffffff" :foreground "#d0d0d0"))))
  '(lsp-headerline-breadcrumb-path-hint-face ((t nil)))
  '(lsp-headerline-breadcrumb-path-info-face ((t nil)))
  '(lsp-headerline-breadcrumb-symbols-face ((t (:inherit font-lock-variable-name-face :weight bold))))
  '(lsp-headerline-breadcrumb-symbols-hint-face ((t (:inherit lsp-headerline-breadcrumb-symbols-face))))
  '(lsp-headerline-breadcrumb-symbols-info-face ((t (:inherit lsp-headerline-breadcrumb-symbols-face))))
+ '(markdown-code-face ((t (:inherit default :extend t :background "white" :foreground "#222222"))))
+ '(markdown-header-face ((t (:background "#ffffff" :foreground "#444444"))))
  '(markdown-inline-code-face ((t (:inherit (markdown-code-face font-lock-constant-face) :background "cornsilk"))))
  '(markdown-pre-face ((t (:inherit (markdown-code-face font-lock-constant-face) :background "cornsilk"))))
  '(mmm-code-submode-face ((t (:background "LightGray"))))
@@ -464,7 +475,8 @@
  '(mmm-delimiter-face ((t nil)) t)
  '(mode-line ((t (:background "steel blue" :foreground "white" :weight normal))))
  '(mode-line-buffer-id ((t (:weight bold))))
- '(mode-line-inactive ((t (:background "grey75" :foreground "white")))))
+ '(mode-line-inactive ((t (:background "grey75" :foreground "white"))))
+ '(selectrum-current-candidate ((t (:inherit highlight)))))
 
 (defun my/backward-delete-word (arg)
   "Delete characters backward until encountering the beginning of a word.
@@ -472,15 +484,7 @@ With argument ARG, do this that many times."
   (interactive "p")
   (my/delete-word (- arg)))
 
-(defun my/delete-word (arg)
-  "Delete characters forward until encountering the end of a word.
-With argument ARG, do this that many times."
-  (interactive "p")
-  (delete-region (point) (progn (forward-word arg) (point))))
-
 (defun my/configure-global-keyboard-shortcuts ()
-  ;; make Ctrl-x / Ctrl-v / etc behave as expected
-  (cua-mode)
   ;; Ctrl-Backspace -> delete a word instead of killing it
   (global-set-key [C-backspace] 'my/backward-delete-word)
   ;; Ctrl-Delete -> delete a word instead of killing it
@@ -494,27 +498,36 @@ With argument ARG, do this that many times."
                     (other-window -1)))
   ;; Ctrl-a -> select entire buffer
   (global-set-key (kbd "C-a") 'mark-whole-buffer)
-  ;; M-x -> counsel extended-command finder
-  (global-set-key (kbd "M-x") 'counsel-M-x)
-  ;; Ctrl-x Ctrl-f -> counsel file finder
-  (global-set-key (kbd "C-x C-f") 'counsel-find-file)
-  ;; Ctrl-x b -> counsel buffer switcher
-  (global-set-key (kbd "C-x b") 'counsel-switch-buffer)
-  ;; Ctrl-s -> swiper buffer-search
-  (global-set-key (kbd "C-s") 'swiper)
-  ;; Ctrl-h f -> counsel function-selection
-  (global-set-key (kbd "C-h f") 'counsel-describe-function)
-  ;; Ctrl-h v -> counsel variable-selection
-  (global-set-key (kbd "C-h v") 'counsel-describe-variable)
+  ;; ;; M-x -> counsel extended-command finder
+  ;; (global-set-key (kbd "M-x") 'counsel-M-x)
+  ;; ;; Ctrl-x Ctrl-f -> counsel file finder
+  ;; (global-set-key (kbd "C-x C-f") 'counsel-find-file)
+  ;; ;; Ctrl-x b -> counsel buffer switcher
+  (global-set-key (kbd "C-x b") 'consult-buffer)
+  ;; ;; Ctrl-s -> swiper buffer-search
+  ;; (global-set-key (kbd "C-s") 'swiper)
+  ;; ;; Ctrl-h f -> counsel function-selection
+  ;; (global-set-key (kbd "C-h f") 'counsel-describe-function)
+  ;; ;; Ctrl-h v -> counsel variable-selection
+  ;; (global-set-key (kbd "C-h v") 'counsel-describe-variable)
   ;; Ctrl-; -> comment/uncomment region
   (global-set-key (kbd "C-;") 'comment-or-uncomment-region)
   ;; C-x 9 -> switch between a horizontal and vertical window split (if 2 windows visible)
   (global-set-key (kbd "C-x 9") 'my/rotate-window-split)
 
+  ;; see also the various `with-eval-after-load' calls for more shortcut assignments
+
+  ;; turn off some other things
   (define-key global-map (kbd "C-/") nil)
   (define-key global-map (kbd "C-x C-k RET") nil)
-  ;; see also the various `with-eval-after-load' calls for more shortcut assignments
-  )
+  ;; `suspend-frame` completely hangs the emacs process which seems cool and good
+  (define-key global-map (kbd "C-x C-z") nil))
+
+(defun my/delete-word (arg)
+  "Delete characters forward until encountering the end of a word.
+With argument ARG, do this that many times."
+  (interactive "p")
+  (delete-region (point) (progn (forward-word arg) (point))))
 
 (defun my/update-packages ()
   (interactive)
@@ -522,7 +535,7 @@ With argument ARG, do this that many times."
   (straight-rebuild-all))
 
 ;; something involving company-mode and lsp attempts to invoke this function
-(defun yas-expand-snippet ())
+(defun yas-expand-snippet (&rest ignored))
 
 (provide 'init.el)
 ;;; init.el ends here
