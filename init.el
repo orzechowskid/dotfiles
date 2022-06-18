@@ -1,39 +1,21 @@
-;;; init.el --- personal config file -*- lexical-binding: t; -*-
-;;; Summary:
-;;; Commentary:
-;;; Code:
-
 ;;(setq debug-on-error t)
 
-;; try real hard to use UTF-8 everywhere all the time
-;; (some of this might be unnecessary and/or deprecated)
-(set-language-environment "UTF-8")
-(set-charset-priority 'unicode)
-(setq locale-coding-system 'utf-8)
-(set-terminal-coding-system 'utf-8)
-(set-keyboard-coding-system 'utf-8)
-(set-selection-coding-system 'utf-8)
-(prefer-coding-system 'utf-8)
-(setq default-process-coding-system '(utf-8-unix . utf-8-unix))
+(setq package-enable-at-startup nil)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; memory management: perform no GC during startup, then raise the limit from the
 ;; default value to something more suitable for modern machines
 (defvar my/gc-cons-threshold (* 1024 1024 20))
 (setq gc-cons-threshold most-positive-fixnum)
 
-;; a directory for any custom scripts
-(add-to-list 'load-path "~/.emacs.d/lisp/")
-
 (add-hook
  'after-init-hook
  (lambda ()
-   (my/configure-file-associations)
-   (my/configure-global-keyboard-shortcuts)
-   (my/configure-modeline)
-   (my/configure-misc)
-   ;; keep these last
-   (setq gc-cons-threshold my/gc-cons-threshold)
-   (message "startup time: %s" (emacs-init-time))))
+   (setq gc-cons-threshold my/gc-cons-threshold)))
+
+;; a directory for any custom scripts
+(add-to-list 'load-path "~/.emacs.d/lisp/")
 
 (setq straight-check-for-modifications '(check-on-save find-when-checking))
 (setq straight-vc-git-default-protocol 'ssh)
@@ -52,490 +34,257 @@
       (eval-print-last-sexp)))
   (load bootstrap-file nil 'nomessage))
 
-(mapcar
- 'straight-use-package
- '((bbjson-mode :type git :protocol ssh :host github :repo "orzechowskid/bbjson-mode.el")
-   company
-   consult
-   coverlay
-   (css-in-js-mode :type git :protocol ssh :host github :repo "orzechowskid/css-in-js.el")
-   delight
-   dockerfile-mode
-   dotenv-mode
-   eldoc
-   '(eslint-disable-rule :type git :protocol ssh :host github :repo "DamienCassou/eslint-disable-rule")
-   exec-path-from-shell
-   flycheck
-   (flymake-stylelint :type git :protocol ssh :host github :repo "orzechowskid/flymake-stylelint")
-   lsp-mode
-   magit
-   marginalia
-   prescient
-   projectile
-   typescript-mode
-   scss-mode
-   selectrum
-   selectrum-prescient
-   tree-sitter
-   tree-sitter-langs
-   (tsi :type git :protocol ssh :host github :repo "orzechowskid/tsi.el")
-   (tsx-mode :type git :protocol ssh :host github :repo "orzechowskid/tsx-mode.el")
-   vs-light-theme
-   yaml-mode))
+(straight-use-package 'use-package)
+(use-package straight
+  :custom (straight-use-package-by-default t))
 
-(with-eval-after-load 'company
-  (define-key company-mode-map (kbd "M-/") 'company-complete))
-
-(with-eval-after-load 'flycheck
-  ;; try some CSS-in-JS linting magic
-  (flycheck-add-mode 'css-stylelint 'typescript-mode)
-  (flycheck-add-mode 'css-stylelint 'tsx-mode))
-
-(with-eval-after-load 'flymake
-  (define-key flymake-mode-map (kbd "C-c ! n") 'flymake-goto-next-error)
-  (define-key flymake-mode-map (kbd "C-c ! p") 'flymake-goto-prev-error)
-  ;; steal the flycheck error indicator for flymake's use
-  ;; maxmum width is 16px according to emacs docs
-  (define-fringe-bitmap 'flymake-big-indicator
-      (vector #b0000000000000000
-              #b0000000000000000
-              #b0000000000000000
-              #b0111000111000000
-              #b0011100011100000
-              #b0001110001110000
-              #b0000111000111000
-              #b0000011100011100
-              #b0000011100011100
-              #b0000111000111000
-              #b0001110001110000
-              #b0011100011100000
-              #b0111000111000000
-              #b0000000000000000
-              #b0000000000000000
-              #b0000000000000000)
-    16 16 'center))
-
-(with-eval-after-load 'magit
-  ;; sometimes it's up to us to inform vc-mode of changes to the repo
-  (advice-add 'magit-checkout :after
-              (lambda (&rest ignored)
-                (vc-refresh-state)))
-  (advice-add 'magit-branch-and-checkout :after
-              (lambda (&rest ignored)
-                (vc-refresh-state))))
-
-(with-eval-after-load 'markdown
-  (define-key markdown-mode-map (kbd "M-.") 'markdown-follow-link-at-point))
-
-(with-eval-after-load 'projectile
-  ;; Ctrl-p -> find file in project
-  (define-key projectile-mode-map (kbd "C-p") 'projectile-find-file))
-
-(with-eval-after-load 'rjsx-mode
-  ;; prefer the jump function provided by LSP and/or xref-jsx
-  (define-key js2-mode-map (kbd "M-.") nil))
-
-(with-eval-after-load 'tree-sitter-langs
-  (tree-sitter-require 'json)
-  (add-to-list 'tree-sitter-major-mode-language-alist '(bbjson-mode . json))
-  (tree-sitter-require 'css)
-  (add-to-list 'tree-sitter-major-mode-language-alist '(scss-mode . css)))
-
-(with-eval-after-load 'selectrum-prescient
+(use-package company
+  :straight t)
+(use-package consult
+  :straight t)
+(use-package eldoc
+  :straight t)
+(use-package magit
+  :straight t)
+(use-package marginalia
+  :straight t)
+(use-package prescient
+  :straight t)
+(use-package projectile
+  :straight t)
+(use-package selectrum
+  :straight t)
+(use-package selectrum-prescient
+  :straight t
+  :after (selectrum prescient)
+  :config
   (selectrum-mode t)
   (selectrum-prescient-mode t)
   (prescient-persist-mode t))
+(use-package vs-light-theme
+  :straight t)
 
-(mapcar
- 'require
- '(consult
-   prescient
-   selectrum-prescient
-   tree-sitter-langs))
+;; Ctrl-PgDn -> next window
+(global-set-key
+ (kbd "C-<next>")
+ 'other-window)
+;; Ctrl-Tab -> next window
+(global-set-key
+ (kbd "C-<tab>")
+ 'other-window)
+;; Ctrl-PgUp -> previous window
+(global-set-key
+ (kbd "C-<prior>")
+ (lambda ()
+   (interactive)
+   (other-window -1)))
 
-(defun my/configure-file-associations ()
-  ;; a hook which configures things common to all programming modes
-  (add-hook
-   'prog-mode-hook
-   (lambda ()
-     (auto-composition-mode 0)
-     (mouse-wheel-mode 0)
-     (projectile-mode)
-     (subword-mode)
-     (show-paren-mode)
-     (global-display-fill-column-indicator-mode)
-     (tooltip-mode 0)))
+(recentf-mode t)
 
-  (push '("\\.json\\'" . bbjson-mode) auto-mode-alist)
-
-  ;; mode-specific hooks
-  (add-hook
-   'emacs-lisp-mode-hook
-   (lambda ()
-     (company-mode)))
-  (push '("\\.js[x]?\\'" . javascript-mode) auto-mode-alist)
-  (add-hook
-   'tsx-mode-hook
-   (lambda ()
-     (setq-local coverlay:base-path
-           (let* ((package-json (locate-dominating-file (buffer-file-name (current-buffer)) "package.json")))
-             (file-name-directory (expand-file-name package-json))))
-     (coverlay-watch-file (concat coverlay:base-path "coverage/lcov.info"))))
-  (push '("\\.ts[x]?\\'" . tsx-mode) auto-mode-alist)
-  (add-hook
-   'js-mode-hook
-   (lambda ()
-     (lsp)))
-  (push '("\\.mjs\\'" . javascript-mode) auto-mode-alist)
-  (add-hook
-   'scss-mode-hook
-   (lambda ()
-     (company-mode)
-     (flymake-stylelint-enable)))
-  (push '("\\.[s]?css\\'" . scss-mode) auto-mode-alist)
-  (add-hook
-   'html-mode-hook
-   (lambda ()
-     (company-mode)
-     ;; close the current tag upon '</'
-     (setq sgml-quick-keys 'close))))
-
-(defun my/configure-misc ()
-  ;; TODO: this doesn't feel great
-  ;; ;; show documentation info at point as well as warnings/errors at point
-  ;; (advice-add
-  ;;  'eldoc-message :after
-  ;;  (lambda (oldfn &rest args)
-  ;;    "Do some stuff to the Help buffer too"
-  ;;    (let ((help-msg
-  ;;           (help-at-pt-string))
-  ;;          (eldoc-msg
-  ;;           eldoc-last-message))
-  ;;      ;; write any docs for the current symbol to the Help buffer
-  ;;      (when eldoc-msg
-  ;;        (save-window-excursion
-  ;;          (with-help-window (help-buffer)
-  ;;            (princ eldoc-msg))))
-  ;;      ;; write any warnings/errors to the echo area
-  ;;      (when help-msg
-  ;;        (display-local-help)))))
-  (advice-add
-   'eldoc-message :around
-   (lambda (oldfn doc-msg)
-     (let ((echo-help-string (help-at-pt-string)))
-       (if echo-help-string
-           (display-local-help)
-         (funcall oldfn doc-msg)))))
-  ;; memory management while inside minibuffer
-  (add-hook 'minibuffer-setup-hook 'my/minibuf-setup-hook)
-  (add-hook 'minibuffer-exit-hook 'my/minibuf-exit-hook)
-  ;; apply theme and appearance preferences
-  (vs-light-theme)
-  (set-face-attribute 'fringe nil :background nil)
-  (assoc-delete-all 'continuation fringe-indicator-alist)
-  ;; apply some globally-helpful modes
-  (global-display-fill-column-indicator-mode t)
-  (global-display-line-numbers-mode t)
-  (marginalia-mode t)
-  (global-subword-mode t)
-  ;; I got 99 columns but the fringe ain't one
-  (setq-default fill-column 99)
-  ;; disable some globally-unhelpful modes
-  (blink-cursor-mode 0)
-  (auto-composition-mode 0)
-  (auto-compression-mode 0)
-  (auto-encryption-mode 0)
-  (dirtrack-mode 0)
-  ;; set `exec-path` to something resonable
-  (exec-path-from-shell-initialize)
-  ;; store all backup files in a separate directory so we don't pollute our projects
-  (defvar autosave-dir (expand-file-name "~/.emacs.d/autosave/"))
-  (setq backup-directory-alist (list (cons ".*" (expand-file-name "~/.emacs.d/backup/"))))
-  (setq auto-save-list-file-prefix autosave-dir)
-  (setq auto-save-file-name-transforms `((".*" ,autosave-dir t)))
-  ;; if I ever need to pass arguments to git I can add back the pound character myself
-  (consult-customize
-   consult-git-grep
-   :initial nil))
-
-(defun my/configure-modeline ()
-  ;; modify some major-mode strings
-  (delight '((emacs-lisp-mode "ELisp")))
-  ;; remove some minor-mode strings ('C-h m' if I need to see them)
-  (delight
-   ;; ( <mode> <replacement string> <file which provides <mode>> )
-   '((company-mode nil "company")
-     (coverlay-minor-mode nil "coverlay")
-     (eldoc-mode nil "eldoc")
-     (lsp-mode nil "lsp-mode")
-     (mmm-mode nil nil)
-     (projectile-mode nil "projectile")
-     (subword-mode nil "subword")
-     (tree-sitter-mode nil "tree-sitter")))
-  ;; customize the flymake mode-line string
-  (setq flymake-mode-line-title " ✓")
-  (advice-add
-   'flymake--mode-line-counter :filter-return
-   (lambda (return-value)
-     (mapcar
-      (lambda (list-item)
-        (list
-         :eval
-         (if (length> list-item 1)
-             (elt list-item 1)
-           "")))
-      return-value)))
-
-  (setq-default
-   mode-line-format
-   '((:eval
-      (my/render-modeline
-       ;; left
-       (list
-	(if (and (buffer-modified-p) (buffer-file-name)) "● " "  ")
-	(propertize "%b" 'face 'mode-line-buffer-id))
-       ;; center
-       (list
-	mode-name
-	minor-mode-alist)
-       ;; right
-       (list
-	(if (stringp vc-mode)
-	    (format "%s"
-		    (format "%s%s"
-			    ;; the little branch-switcheroo guy
-			    (char-to-string 57504)
-			    (format-mode-line '(vc-mode vc-mode))))
-	  "")))))))
-
-(defun my/find-file-regex (pattern)
-  "Better matching for `counsel-find-file'.  Only search for PATTERN at the start of file basenames."
-  (concat "^" pattern))
-
-(defun my/magit-create-checkout (&optional branch-name)
-  (interactive "Mnew branch name: ")
-  ;; TODO: check for presence of git repo
-  (message "branch name is %s" branch-name))
-
-(defun my/minibuf-setup-hook ()
-  ;; stolen from Doom
-  (setq gc-cons-threshold most-positive-fixnum))
-
-(defun my/minibuf-exit-hook ()
-  ;; stolen from Doom
-  (run-at-time
-   1
-   nil
-   (lambda ()
-     (setq gc-cons-threshold my/gc-cons-threshold))))
-
-(defun my/render-modeline (left-content center-content right-content)
-  "Return a string containing LEFT-CONTENT and RIGHT-CONTENT appropriately justified."
-  (let*
-      ((left-str (format-mode-line left-content))
-       (center-str (format-mode-line center-content))
-       (right-str (format-mode-line right-content))
-       (column-width (/ (window-total-width) 3))
-       (left-gutter 1)
-       (right-gutter 1)
-       (left-spacing
-	(- column-width
-           (+ left-gutter
-              (length left-str))))
-       (right-spacing
-	(- (window-total-width)
-           right-gutter
-           (length right-str)
-           (length center-str)
-           left-spacing
-           (length left-str)
-           left-gutter)))
-    
-    (format
-     "%s%s%s%s%s%s%s"
-     (format (format "%%%ds" left-gutter) "")
-     left-str
-     (format (format "%%%ds" left-spacing) "")
-     center-str
-     (format (format "%%%ds" right-spacing) "")
-     right-str
-     (format (format "%%%ds" right-gutter) ""))))
-
-(defun my/rotate-window-split ()
+(defun domacs/universal-argument ()
+  "Internal function.  `universal-argument' with some help text."
   (interactive)
-  (if (= (count-windows) 2)
-      (let* ((this-win-buffer (window-buffer))
-             (next-win-buffer (window-buffer (next-window)))
-             (this-win-edges (window-edges (selected-window)))
-             (next-win-edges (window-edges (next-window)))
-             (this-win-2nd (not (and (<= (car this-win-edges)
-                                         (car next-win-edges))
-                                     (<= (cadr this-win-edges)
-                                         (cadr next-win-edges)))))
-             (splitter
-              (if (= (car this-win-edges)
-                     (car (window-edges (next-window))))
-                  'split-window-horizontally
-                'split-window-vertically)))
-        (delete-other-windows)
-        (let ((first-win (selected-window)))
-          (funcall splitter)
-          (if this-win-2nd (other-window 1))
-          (set-window-buffer (selected-window) this-win-buffer)
-          (set-window-buffer (next-window) next-win-buffer)
-          (select-window first-win)
-          (if this-win-2nd (other-window 1))))))
+  (message "Enter a numeric value followed by a keystroke or other command...")
+  (universal-argument))
+
+(defun domacs/file-menu ()
+  "Internal function.  Creates the File menu."
+  (let ((keymap (make-sparse-keymap)))
+    (define-key-after
+      keymap [find-file]
+      '(menu-item "Visit existing/new file..." find-file))
+    (define-key-after
+      keymap [visit-directory]
+      '(menu-item "Visit existing/new directory..." dired))
+    (define-key-after
+      keymap [file-sep-1]
+      '(menu-item "--"))
+    (define-key-after
+      keymap [save-buffer]
+      '(menu-item "Save file" save-buffer
+                  :enable (and (current-buffer)
+			       (buffer-modified-p))))
+    (define-key-after
+      keymap [kill-current-buffer]
+      '(menu-item "Close file" kill-current-buffer
+                  :enable (current-buffer)
+		  :keys "C-x k"))
+    (define-key-after
+      keymap [file-sep-2]
+      '(menu-item "--"))
+    (define-key-after
+      keymap [save-buffers-kill-terminal]
+      '(menu-item "Quit" save-buffers-kill-terminal))
+    keymap))
+
+
+(defun domacs/edit-menu ()
+  "Internal function.  Creates the Edit menu."
+  ;; TODO: figure out why we can't refer to cua- functions inside our menu items
+  (let ((keymap (make-sparse-keymap)))
+    (define-key-after
+      keymap [undo]
+      '(menu-item "Undo last command" undo
+                  :enable (and (not buffer-read-only)
+                               (not (eq t buffer-undo-list))
+                               (if (eq last-command 'undo)
+                                   (listp pending-undo-list)
+				 (consp buffer-undo-list)))
+                  :keys "C-z"))
+    (define-key-after
+      keymap [edit-sep-1]
+      '(menu-item "--"))
+    (define-key-after
+      keymap [cut]
+      '(menu-item "Cut current region" kill-region
+                  :enable (and
+                           mark-active
+                           (not buffer-read-only))
+                  :keys "C-x"))
+    (define-key-after
+      keymap [cut]
+      '(menu-item "Copy region" kill-ring-save
+                  :enable mark-active
+                  :keys "C-c"))
+    (define-key-after
+      keymap [paste]
+      '(menu-item "Paste" yank
+                  :enable (and (cdr yank-menu)
+                               (not buffer-read-only))
+                  :keys "C-v"))
+    (define-key-after
+      keymap [edit-sep-2]
+      '(menu-item "--"))
+    (define-key-after
+      keymap [select-all]
+      '(menu-item "Select all" mark-whole-buffer
+                  :enabled (> (- (point-max) (point-min) 0))))
+    keymap))
+
+
+(defun domacs/actions-menu ()
+  "Internal function.  Creates the Actions menu."
+  (let ((keymap (make-sparse-keymap)))
+    (define-key-after
+      keymap
+      [universal-argument]
+      '(menu-item "Repeat a command..." domacs/universal-argument
+		  :keys "C-u"))
+    (define-key-after
+      keymap [actions-sep-1]
+      '(menu-item "--"))
+    (define-key-after
+      keymap [keyboard-quit]
+      '(menu-item "Cancel current command" keyboard-quit))
+    keymap))
+
+
+(defun domacs/help-menu ()
+  "Internal function.  Creates the Help menu."
+  (let ((keymap (make-sparse-keymap "domacs/help-keymap"))
+	(describe-keymap (make-sparse-keymap)))
+   
+    (define-key-after
+      describe-keymap [describe-function]
+      '(menu-item "Describe a function..." describe-function))
+    (define-key-after
+      describe-keymap [describe-variable]
+      '(menu-item "Describe a variable..." describe-variable))
+    (define-key-after
+      describe-keymap [describe-key]
+      '(menu-item "Describe a keybinding..." describe-key))
+    (define-key-after
+      describe-keymap [describe-face]
+      '(menu-item "Describe a font-face..." describe-face))
+    (define-key-after
+      describe-keymap [describe-mode]
+      '(menu-item "Describe current buffer modes..." describe-mode))
+
+    (define-key-after
+      keymap [emacs-tutorial]
+      '(menu-item "Emacs Tutorial" help-with-tutorial-spec-language))
+    (define-key-after
+      keymap [describe-menu-item]
+      (cons "Describe" describe-keymap))
+    (define-key-after
+      keymap [help-sep-1]
+      '(menu-item "--"))
+    (define-key-after
+      keymap [about-emacs]
+      '(menu-item "About emacs..." about-emacs
+		  :keys "C-h C-a"))
+    (define-key-after
+      keymap [about-gnu-project]
+      '(menu-item "About GNU..." about-gnu-project
+		  :keys "C-h g"))
+    keymap))
+    
+
+(let ((menu-bar-keymap (make-sparse-keymap)))
+  (define-key
+   global-map [menu-bar]
+   menu-bar-keymap)
+  (define-key-after
+    menu-bar-keymap [file]
+    (cons "File" (domacs/file-menu)))
+  (define-key-after
+    menu-bar-keymap [edit]
+    (cons "Edit" (domacs/edit-menu)))
+  (define-key-after
+    menu-bar-keymap [actions]
+    (cons "Actions" (domacs/actions-menu)))
+  (define-key-after
+    menu-bar-keymap [help]
+    (cons "Help" (domacs/help-menu))))
+
+;; HTML codes for the Source Code Pro glyphs to use as fringe indicators
+;; (requires fringes to be nil)
+(set-display-table-slot standard-display-table 'truncation 8230)
+(set-display-table-slot standard-display-table 'wrap 8601)
+
+(add-hook
+ 'prog-mode-hook
+ (lambda ()
+   (linum-mode t)
+   (subword-mode t)
+   (show-paren-mode t)
+   (display-fill-column-indicator-mode t)
+   (company-mode t)))
+
+;; (mapcar
+;;  'require
+;;  '(consult
+;;    marginalia
+;;    prescient
+;;    selectrum-prescient))
+
+(vs-light-theme)
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(bbjson-indent-offset 2)
- '(company-backends '(company-capf))
- '(coverlay:tested-line-background-color nil)
- '(coverlay:untested-line-background-color "lavenderblush")
- '(create-lockfiles nil)
- '(css-indent-offset 2)
+ '(auto-compression-mode nil)
+ '(auto-encryption-mode nil)
+ '(blink-cursor-mode nil)
  '(cua-mode t)
- '(fill-column 79)
- '(flymake-error-bitmap '(flymake-big-indicator compilation-error))
- '(flymake-warning-bitmap '(flymake-big-indicator compilation-warning))
- '(fringe-mode '(24 . 0) nil (fringe))
- '(indent-tabs-mode nil)
- '(inhibit-startup-echo-area-message (user-login-name))
+ '(dirtrack-mode nil)
+ '(fill-column 99)
+ '(fringe-mode 0 nil (fringe))
  '(inhibit-startup-screen t)
- '(initial-scratch-message nil)
- '(js-enabled-frameworks nil)
- '(js-indent-level 4)
- '(lisp-indent-function 'common-lisp-indent-function)
- '(lsp-clients-typescript-init-opts '(:generateReturnInDocTemplate t))
- '(lsp-clients-typescript-preferences '(:generateReturnInDocTemplate t))
- '(lsp-enable-snippet nil)
- '(menu-bar-mode nil)
- '(mmm-submode-decoration-level 0)
- '(projectile-completion-system 'auto)
- '(read-process-output-max (* 1024 1024 5) t)
+ '(marginalia-mode t)
+ '(recentf-mode t)
+ '(scroll-bar-mode nil)
  '(selectrum-mode t)
+ '(show-paren-mode nil)
  '(tool-bar-mode nil)
- '(tsi-typescript-indent-offset 2)
- '(typescript-indent-level 2)
- '(vc-make-backup-files t))
+ '(tooltip-mode nil)
+ '(use-dialog-box nil))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(company-preview ((t (:inherit company-tooltip-selection))))
- '(company-preview-common ((t nil)))
- '(company-preview-search ((t nil)))
- '(company-scrollbar-bg ((t (:background "gray95"))) t)
- '(company-scrollbar-fg ((t (:background "#808080"))) t)
- '(company-tooltip ((t (:background "white smoke" :foreground "black"))))
- '(company-tooltip-annotation ((t (:foreground "gray45"))))
- '(company-tooltip-common ((t (:foreground "gray14" :weight normal))))
- '(company-tooltip-scrollbar-thumb ((t (:background "gray50"))))
- '(company-tooltip-scrollbar-track ((t (:inherit company-tooltip-common))))
- '(company-tooltip-selection ((t (:inherit highlight))))
- '(dap-ui-breakpoint-verified-fringe ((t (:background "black" :weight bold))))
- '(dap-ui-pending-breakpoint-face ((t (:background "pale goldenrod"))))
- '(fill-column-indicator ((t (:foreground "#d0d0d0"))))
- '(flymake-warning ((t (:underline (:color "dark orange" :style wave)))))
- '(font-lock-builtin-face ((t (:foreground "#647892"))))
- '(header-line ((t (:inherit mode-line :background "grey97" :foreground "grey20" :box nil))))
- '(highlight ((t (:background "light steel blue"))))
- '(hl-line ((t (:inherit highlight))))
- '(js2-error ((t nil)))
- '(js2-external-variable ((t nil)))
- '(js2-function-call ((t nil)))
- '(js2-function-param ((t nil)))
- '(js2-instance-member ((t nil)))
- '(js2-jsdoc-html-tag-delimiter ((t nil)))
- '(js2-jsdoc-html-tag-name ((t nil)))
- '(js2-jsdoc-tag ((t nil)))
- '(js2-jsdoc-type ((t nil)))
- '(js2-jsdoc-value ((t nil)))
- '(js2-object-property ((t nil)))
- '(js2-object-property-access ((t nil)))
- '(js2-private-function-call ((t nil)))
- '(js2-private-member ((t nil)))
- '(js2-warning ((t nil)))
- '(line-number ((t (:background "#ffffff" :foreground "#d0d0d0"))))
- '(lsp-headerline-breadcrumb-path-hint-face ((t nil)))
- '(lsp-headerline-breadcrumb-path-info-face ((t nil)))
- '(lsp-headerline-breadcrumb-symbols-face ((t (:inherit font-lock-variable-name-face :weight bold))))
- '(lsp-headerline-breadcrumb-symbols-hint-face ((t (:inherit lsp-headerline-breadcrumb-symbols-face))))
- '(lsp-headerline-breadcrumb-symbols-info-face ((t (:inherit lsp-headerline-breadcrumb-symbols-face))))
- '(markdown-code-face ((t (:inherit default :extend t :background "white" :foreground "#222222"))))
- '(markdown-header-face ((t (:background "#ffffff" :foreground "#444444"))))
- '(markdown-inline-code-face ((t (:inherit (markdown-code-face font-lock-constant-face) :background "cornsilk"))))
- '(markdown-pre-face ((t (:inherit (markdown-code-face font-lock-constant-face) :background "cornsilk"))))
- '(mmm-code-submode-face ((t (:background "LightGray"))))
- '(mmm-default-submode-face ((t nil)))
- '(mmm-delimiter-face ((t nil)) t)
- '(mode-line ((t (:background "steel blue" :foreground "white" :weight normal))))
- '(mode-line-buffer-id ((t (:weight bold))))
- '(mode-line-inactive ((t (:background "grey75" :foreground "white"))))
- '(selectrum-current-candidate ((t (:inherit highlight)))))
-
-(defun my/backward-delete-word (arg)
-  "Delete characters backward until encountering the beginning of a word.
-With argument ARG, do this that many times."
-  (interactive "p")
-  (my/delete-word (- arg)))
-
-(defun my/configure-global-keyboard-shortcuts ()
-  ;; Ctrl-Backspace -> delete a word instead of killing it
-  (global-set-key [C-backspace] 'my/backward-delete-word)
-  ;; Ctrl-Delete -> delete a word instead of killing it
-  (global-set-key [C-delete] 'my/delete-word)
-  ;; Ctrl-PgDn -> next window
-  (global-set-key [C-next] 'other-window)
-  ;; Ctrl-PgUp -> previous window
-  (global-set-key [C-prior]
-                  (lambda ()
-                    (interactive)
-                    (other-window -1)))
-  ;; Ctrl-a -> select entire buffer
-  (global-set-key (kbd "C-a") 'mark-whole-buffer)
-  ;; ;; M-x -> counsel extended-command finder
-  ;; (global-set-key (kbd "M-x") 'counsel-M-x)
-  ;; ;; Ctrl-x Ctrl-f -> counsel file finder
-  ;; (global-set-key (kbd "C-x C-f") 'counsel-find-file)
-  ;; ;; Ctrl-x b -> counsel buffer switcher
-  (global-set-key (kbd "C-x b") 'consult-buffer)
-  ;; ;; Ctrl-s -> swiper buffer-search
-  ;; (global-set-key (kbd "C-s") 'swiper)
-  ;; ;; Ctrl-h f -> counsel function-selection
-  ;; (global-set-key (kbd "C-h f") 'counsel-describe-function)
-  ;; ;; Ctrl-h v -> counsel variable-selection
-  ;; (global-set-key (kbd "C-h v") 'counsel-describe-variable)
-  ;; Ctrl-; -> comment/uncomment region
-  (global-set-key (kbd "C-;") 'comment-or-uncomment-region)
-  ;; C-x 9 -> switch between a horizontal and vertical window split (if 2 windows visible)
-  (global-set-key (kbd "C-x 9") 'my/rotate-window-split)
-
-  ;; see also the various `with-eval-after-load' calls for more shortcut assignments
-
-  ;; turn off some other things
-  (define-key global-map (kbd "C-/") nil)
-  (define-key global-map (kbd "C-x C-k RET") nil)
-  ;; `suspend-frame` completely hangs the emacs process which seems cool and good
-  (define-key global-map (kbd "C-x C-z") nil))
-
-(defun my/delete-word (arg)
-  "Delete characters forward until encountering the end of a word.
-With argument ARG, do this that many times."
-  (interactive "p")
-  (delete-region (point) (progn (forward-word arg) (point))))
-
-(defun my/update-packages ()
-  (interactive)
-  (straight-pull-all)
-  (straight-rebuild-all))
-
-;; something involving company-mode and lsp attempts to invoke this function
-(defun yas-expand-snippet (&rest ignored))
-
-(provide 'init.el)
-;;; init.el ends here
+ '(default ((t (:background "#fafafa" :foreground "#222222" :weight light :height 120 :foundry "ADBO" :family "Source Code Pro"))))
+ '(fringe ((t (:background nil)))))
