@@ -10,3 +10,4 @@
 alias please='sudo "$BASH" -c "$(history -p !!)"'
 alias nodemodules='find . -name "node_modules" | xargs rm -rf'
 alias scripts='cat package.json | jq .scripts'
+alias branch-clean='git branch | head -n -10 | xargs git branch -D'
